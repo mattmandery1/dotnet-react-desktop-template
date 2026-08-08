@@ -1,10 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Dotnet10Template.Application.Services;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Dotnet10Template.Application
+namespace Dotnet10Template.Application;
+
+public static class DependencyInjection
 {
-    internal class DependencyInjection
+    public static IServiceCollection AddApplication(
+        this IServiceCollection services)
     {
+        services.AddScoped<HelloService>();
+
+        return services;
     }
 }
