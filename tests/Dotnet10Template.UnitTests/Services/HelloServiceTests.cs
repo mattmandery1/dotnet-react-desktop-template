@@ -30,7 +30,8 @@ public sealed class HelloServiceTests
             repository.Object,
             logger);
 
-        var result = await service.GetGreetingAsync();
+        var result = await service.GetGreetingAsync(
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(
             "Hello World, the names are Matt, Tony, Bob",

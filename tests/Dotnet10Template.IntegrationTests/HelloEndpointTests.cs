@@ -12,8 +12,7 @@ namespace Dotnet10Template.IntegrationTests;
 public sealed class HelloEndpointTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgresContainer =
-        new PostgreSqlBuilder()
-            .WithImage("postgres:17")
+        new PostgreSqlBuilder("postgres:17")
             .WithDatabase("dotnet10template_tests")
             .WithUsername("postgres")
             .WithPassword("postgres")
@@ -49,11 +48,14 @@ public sealed class HelloEndpointTests : IAsyncLifetime
 
         var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/api/hello");
+        var response = await client.GetAsync(
+            "/api/hello",
+            TestContext.Current.CancellationToken);
 
         response.EnsureSuccessStatusCode();
 
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(
             "Hello World, the names are Matt, Tony, Bob",
