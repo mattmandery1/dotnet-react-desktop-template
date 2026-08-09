@@ -1,5 +1,6 @@
 using Dotnet10Template.Infrastructure;
 using Dotnet10Template.Application;
+using Dotnet10Template.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,7 +12,12 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
+await app.Services.ApplyDatabaseMigrationsAsync();
+app.MapHealthChecks("/health");
+
 app.MapControllers();
 
 // Configure the HTTP request pipeline.
