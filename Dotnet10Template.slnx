@@ -1,5 +1,9 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="Dotnet10Template.Desktop/Dotnet10Template.Desktop.csproj" Id="e7db6946-de82-4001-93b4-90e6d658b6f9">
+      <Platform Project="x64" />
+      <Deploy />
+    </Project>
     <Project Path="src/Dotnet10Template.Api/Dotnet10Template.Api.csproj" />
     <Project Path="src/Dotnet10Template.Application/Dotnet10Template.Application.csproj" />
     <Project Path="src/Dotnet10Template.Domain/Dotnet10Template.Domain.csproj" />
