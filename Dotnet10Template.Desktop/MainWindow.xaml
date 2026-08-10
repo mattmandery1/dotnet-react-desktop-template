@@ -9,9 +9,7 @@
     Title="Dotnet10Template">
 
     <Grid>
-        <WebView2
-            x:Name="AppWebView"
-            Source="http://localhost:5173" />
+        <WebView2 x:Name="AppWebView" />
     </Grid>
 
 </Window>

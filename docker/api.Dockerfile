@@ -5,6 +5,8 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
+COPY ["Directory.Build.props", "./"]
+COPY ["Directory.Packages.props", "./"]
 COPY ["src/Dotnet10Template.Api/Dotnet10Template.Api.csproj", "src/Dotnet10Template.Api/"]
 COPY ["src/Dotnet10Template.Application/Dotnet10Template.Application.csproj", "src/Dotnet10Template.Application/"]
 COPY ["src/Dotnet10Template.Domain/Dotnet10Template.Domain.csproj", "src/Dotnet10Template.Domain/"]

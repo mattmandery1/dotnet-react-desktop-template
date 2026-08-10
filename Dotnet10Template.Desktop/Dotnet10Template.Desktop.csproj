@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
@@ -12,6 +12,7 @@
     <WinUISDKReferences>false</WinUISDKReferences>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
+    <WebProjectDir>$(MSBuildProjectDirectory)\..\src\dotnet10template.web\</WebProjectDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,6 +40,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>DesktopWebDistPath</_Parameter1>
+      <_Parameter2>$(WebProjectDir)dist</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <!--
@@ -57,4 +62,45 @@
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
   </PropertyGroup>
+
+  <ItemGroup>
+    <DesktopWebBuildInput Include="$(WebProjectDir)index.html" />
+    <DesktopWebBuildInput Include="$(WebProjectDir)package.json" />
+    <DesktopWebBuildInput Include="$(WebProjectDir)package-lock.json" />
+    <DesktopWebBuildInput Include="$(WebProjectDir)tsconfig*.json" />
+    <DesktopWebBuildInput Include="$(WebProjectDir)vite.config.ts" />
+    <DesktopWebBuildInput Include="$(WebProjectDir)public\**\*.*" />
+    <DesktopWebBuildInput Include="$(WebProjectDir)src\**\*.*" />
+  </ItemGroup>
+
+  <Target Name="RestoreDesktopWebPackages"
+          Condition="'$(DesignTimeBuild)' != 'true'"
+          Inputs="$(WebProjectDir)package.json;$(WebProjectDir)package-lock.json"
+          Outputs="$(WebProjectDir)node_modules\.package-lock.json">
+    <Exec Command="npm ci" WorkingDirectory="$(WebProjectDir)" />
+  </Target>
+
+  <Target Name="BuildDesktopWebAssets"
+          Condition="'$(DesignTimeBuild)' != 'true'"
+          DependsOnTargets="RestoreDesktopWebPackages"
+          Inputs="@(DesktopWebBuildInput)"
+          Outputs="$(WebProjectDir)dist\index.html">
+    <Exec Command="npm run build" WorkingDirectory="$(WebProjectDir)" />
+  </Target>
+
+  <Target Name="CopyDesktopWebAssets"
+          Condition="'$(DesignTimeBuild)' != 'true'"
+          DependsOnTargets="BuildDesktopWebAssets"
+          AfterTargets="Build">
+    <ItemGroup>
+      <DesktopWebAsset Include="$(WebProjectDir)dist\**\*.*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(OutDir)WebAssets" />
+    <MakeDir Directories="$(OutDir)WebAssets" />
+    <Copy SourceFiles="@(DesktopWebAsset)"
+          DestinationFiles="@(DesktopWebAsset->'$(OutDir)WebAssets\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <MakeDir Directories="$(OutDir)AppX\WebAssets" />
+    <Copy SourceFiles="@(DesktopWebAsset)"
+          DestinationFiles="@(DesktopWebAsset->'$(OutDir)AppX\WebAssets\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
 </Project>
