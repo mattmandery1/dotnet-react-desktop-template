@@ -10,6 +10,25 @@
 
     <Grid>
         <WebView2 x:Name="AppWebView" />
+        <Border
+            x:Name="StartupError"
+            Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+            Padding="32"
+            Visibility="Collapsed">
+            <StackPanel
+                MaxWidth="760"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="12">
+                <TextBlock
+                    FontSize="22"
+                    FontWeight="SemiBold"
+                    Text="Dotnet10Template could not start" />
+                <TextBlock
+                    x:Name="StartupErrorMessage"
+                    TextWrapping="WrapWholeWords" />
+            </StackPanel>
+        </Border>
     </Grid>
 
 </Window>

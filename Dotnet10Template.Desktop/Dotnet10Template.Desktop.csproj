@@ -13,6 +13,7 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <WebProjectDir>$(MSBuildProjectDirectory)\..\src\dotnet10template.web\</WebProjectDir>
+    <ApiProjectPath>$(MSBuildProjectDirectory)\..\src\Dotnet10Template.Api\Dotnet10Template.Api.csproj</ApiProjectPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -43,6 +44,10 @@
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>DesktopWebDistPath</_Parameter1>
       <_Parameter2>$(WebProjectDir)dist</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>DesktopApiPublishPath</_Parameter1>
+      <_Parameter2>$(OutDir)Api</_Parameter2>
     </AssemblyAttribute>
   </ItemGroup>
 
@@ -102,5 +107,19 @@
     <MakeDir Directories="$(OutDir)AppX\WebAssets" />
     <Copy SourceFiles="@(DesktopWebAsset)"
           DestinationFiles="@(DesktopWebAsset->'$(OutDir)AppX\WebAssets\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <Target Name="PublishDesktopApi"
+          Condition="'$(DesignTimeBuild)' != 'true'"
+          AfterTargets="Build">
+    <RemoveDir Directories="$(OutDir)Api" />
+    <Exec Command="dotnet publish &quot;$(ApiProjectPath)&quot; --nologo --configuration &quot;$(Configuration)&quot; --output &quot;$(OutDir)Api&quot; --no-self-contained -p:UseAppHost=true" />
+    <ItemGroup>
+      <DesktopApiAsset Include="$(OutDir)Api\**\*.*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(OutDir)AppX\Api" />
+    <MakeDir Directories="$(OutDir)AppX\Api" />
+    <Copy SourceFiles="@(DesktopApiAsset)"
+          DestinationFiles="@(DesktopApiAsset->'$(OutDir)AppX\Api\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 </Project>

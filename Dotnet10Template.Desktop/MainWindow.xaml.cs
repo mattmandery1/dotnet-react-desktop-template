@@ -1,3 +1,4 @@
+using Dotnet10Template.Desktop.Hosting;
 using Microsoft.UI.Xaml;
 using Microsoft.Web.WebView2.Core;
 using System;
@@ -14,8 +15,8 @@ namespace Dotnet10Template.Desktop
     public sealed partial class MainWindow : Window
     {
         private const string AppHostName = "app.local";
-        private static readonly Uri ApiBaseUri = new("http://localhost:8080");
-        private static readonly HttpClient ApiClient = new(new HttpClientHandler
+        private readonly DesktopApiHost apiHost = new();
+        private readonly HttpClient apiClient = new(new HttpClientHandler
         {
             AllowAutoRedirect = false
         });
@@ -25,24 +26,44 @@ namespace Dotnet10Template.Desktop
         {
             InitializeComponent();
             AppWebView.Loaded += AppWebView_Loaded;
+            Closed += MainWindow_Closed;
         }
 
         private async void AppWebView_Loaded(object sender, RoutedEventArgs e)
         {
             AppWebView.Loaded -= AppWebView_Loaded;
 
-            appFolder = GetReactAppFolder();
-            var indexPath = Path.Combine(appFolder, "index.html");
-
-            if (!File.Exists(indexPath))
+            try
             {
-                throw new FileNotFoundException("The bundled React app was not found. Build the desktop project to generate and copy the web assets.", indexPath);
+                appFolder = GetReactAppFolder();
+                var indexPath = Path.Combine(appFolder, "index.html");
+
+                if (!File.Exists(indexPath))
+                {
+                    throw new FileNotFoundException("The bundled React app was not found. Build the desktop project to generate and copy the web assets.", indexPath);
+                }
+
+                await apiHost.StartAsync();
+                await AppWebView.EnsureCoreWebView2Async();
+                RegisterAppHost();
+
+                AppWebView.Source = new Uri($"https://{AppHostName}/index.html");
+            }
+            catch (Exception ex)
+            {
+                ShowStartupError(ex);
+            }
+        }
+
+        private async void MainWindow_Closed(object sender, WindowEventArgs args)
+        {
+            if (AppWebView.CoreWebView2 is not null)
+            {
+                AppWebView.CoreWebView2.WebResourceRequested -= CoreWebView2_WebResourceRequested;
             }
 
-            await AppWebView.EnsureCoreWebView2Async();
-            RegisterAppHost();
-
-            AppWebView.Source = new Uri($"https://{AppHostName}/index.html");
+            apiClient.Dispose();
+            await apiHost.DisposeAsync();
         }
 
         private void RegisterAppHost()
@@ -164,7 +185,7 @@ namespace Dotnet10Template.Desktop
                 CopyRequestContentHeaders(webViewRequest, apiRequest);
             }
 
-            using var apiResponse = await ApiClient.SendAsync(apiRequest);
+            using var apiResponse = await apiClient.SendAsync(apiRequest);
             var responseBody = await apiResponse.Content.ReadAsByteArrayAsync();
 
             return AppWebView.CoreWebView2.Environment.CreateWebResourceResponse(
@@ -186,9 +207,15 @@ namespace Dotnet10Template.Desktop
                 requestUri.Host.Equals(AppHostName, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static Uri CreateApiUri(Uri requestUri)
+        private Uri CreateApiUri(Uri requestUri)
         {
-            return new Uri(ApiBaseUri, requestUri.PathAndQuery);
+            return new Uri(apiHost.BaseUri, requestUri.PathAndQuery);
+        }
+
+        private void ShowStartupError(Exception exception)
+        {
+            StartupErrorMessage.Text = exception.Message;
+            StartupError.Visibility = Visibility.Visible;
         }
 
         private static void CopyRequestHeaders(
