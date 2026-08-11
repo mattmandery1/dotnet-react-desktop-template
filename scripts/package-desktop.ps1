@@ -69,6 +69,107 @@ function ConvertTo-PlainText {
     }
 }
 
+function Read-SigningCertificate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [string]$Password
+    )
+
+    $flags =
+        [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::UserKeySet -bor
+        [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet
+
+    try {
+        if ([string]::IsNullOrEmpty($Password)) {
+            return [Security.Cryptography.X509Certificates.X509Certificate2]::new($Path, $null, $flags)
+        }
+
+        return [Security.Cryptography.X509Certificates.X509Certificate2]::new($Path, $Password, $flags)
+    }
+    catch {
+        throw "Unable to read signing certificate '$Path'. If this is a generated development certificate, delete the matching .pfx/.cer files and rerun with -GenerateDevelopmentCertificate. $($_.Exception.Message)"
+    }
+}
+
+function Assert-SigningCertificateBase {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedSubject
+    )
+
+    if ($Certificate.Subject -ne $ExpectedSubject) {
+        throw "Signing certificate subject '$($Certificate.Subject)' does not match package publisher '$ExpectedSubject'."
+    }
+
+    if (-not $Certificate.HasPrivateKey) {
+        throw "Signing certificate must include a private key: $Path"
+    }
+}
+
+function Assert-DevelopmentSigningCertificate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedSubject
+    )
+
+    Assert-SigningCertificateBase `
+        -Certificate $Certificate `
+        -Path $Path `
+        -ExpectedSubject $ExpectedSubject
+
+    $basicConstraints = $Certificate.Extensions |
+        Where-Object { $_.Oid.Value -eq "2.5.29.19" } |
+        Select-Object -First 1
+
+    if ($null -eq $basicConstraints) {
+        throw "Existing development signing certificate '$Path' is missing the Basic Constraints extension required by the generated Add-AppDevPackage.ps1 flow. Delete '$Path' and its .cer file, then rerun with -GenerateDevelopmentCertificate."
+    }
+
+    $basicConstraints = [Security.Cryptography.X509Certificates.X509BasicConstraintsExtension]$basicConstraints
+    if ($basicConstraints.CertificateAuthority) {
+        throw "Existing development signing certificate '$Path' has Basic Constraints CA=true. Delete '$Path' and its .cer file, then rerun with -GenerateDevelopmentCertificate."
+    }
+
+    $keyUsage = $Certificate.Extensions |
+        Where-Object { $_.Oid.Value -eq "2.5.29.15" } |
+        Select-Object -First 1
+
+    if ($null -eq $keyUsage) {
+        throw "Existing development signing certificate '$Path' is missing the Digital Signature key usage required for MSIX signing. Delete '$Path' and its .cer file, then rerun with -GenerateDevelopmentCertificate."
+    }
+
+    $keyUsage = [Security.Cryptography.X509Certificates.X509KeyUsageExtension]$keyUsage
+    if (($keyUsage.KeyUsages -band [Security.Cryptography.X509Certificates.X509KeyUsageFlags]::DigitalSignature) -eq 0) {
+        throw "Existing development signing certificate '$Path' does not allow Digital Signature key usage. Delete '$Path' and its .cer file, then rerun with -GenerateDevelopmentCertificate."
+    }
+
+    $enhancedKeyUsage = $Certificate.Extensions |
+        Where-Object { $_.Oid.Value -eq "2.5.29.37" } |
+        Select-Object -First 1
+
+    if ($null -eq $enhancedKeyUsage) {
+        throw "Existing development signing certificate '$Path' is missing the Code Signing enhanced key usage required for MSIX signing. Delete '$Path' and its .cer file, then rerun with -GenerateDevelopmentCertificate."
+    }
+
+    $enhancedKeyUsage = [Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension]$enhancedKeyUsage
+    $hasCodeSigning = $enhancedKeyUsage.EnhancedKeyUsages |
+        Where-Object { $_.Value -eq "1.3.6.1.5.5.7.3.3" } |
+        Select-Object -First 1
+
+    if ($null -eq $hasCodeSigning) {
+        throw "Existing development signing certificate '$Path' is missing the Code Signing enhanced key usage required for MSIX signing. Delete '$Path' and its .cer file, then rerun with -GenerateDevelopmentCertificate."
+    }
+}
+
 function Import-SigningCertificate {
     param(
         [Parameter(Mandatory = $true)]
@@ -78,24 +179,11 @@ function Import-SigningCertificate {
         [string]$ExpectedSubject
     )
 
-    $flags =
-        [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::UserKeySet -bor
-        [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet
-
-    $certificate = if ([string]::IsNullOrEmpty($Password)) {
-        [Security.Cryptography.X509Certificates.X509Certificate2]::new($Path, $null, $flags)
-    }
-    else {
-        [Security.Cryptography.X509Certificates.X509Certificate2]::new($Path, $Password, $flags)
-    }
-
-    if ($certificate.Subject -ne $ExpectedSubject) {
-        throw "Signing certificate subject '$($certificate.Subject)' does not match package publisher '$ExpectedSubject'."
-    }
-
-    if (-not $certificate.HasPrivateKey) {
-        throw "Signing certificate must include a private key: $Path"
-    }
+    $certificate = Read-SigningCertificate -Path $Path -Password $Password
+    Assert-SigningCertificateBase `
+        -Certificate $certificate `
+        -Path $Path `
+        -ExpectedSubject $ExpectedSubject
 
     $store = [Security.Cryptography.X509Certificates.X509Store]::new(
         [Security.Cryptography.X509Certificates.StoreName]::My,
@@ -181,7 +269,10 @@ if ($GenerateDevelopmentCertificate) {
             -FriendlyName "$displayName Development Signing" `
             -CertStoreLocation "Cert:\CurrentUser\My" `
             -NotAfter (Get-Date).AddYears(3) `
-            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+            -TextExtension @(
+                "2.5.29.19={critical}{text}CA=false",
+                "2.5.29.37={text}1.3.6.1.5.5.7.3.3"
+            )
 
         Export-PfxCertificate `
             -Cert $cert `
@@ -192,6 +283,15 @@ if ($GenerateDevelopmentCertificate) {
             -Cert $cert `
             -FilePath ([IO.Path]::ChangeExtension($CertificatePath, ".cer")) | Out-Null
     }
+
+    $developmentCertificate = Read-SigningCertificate `
+        -Path $CertificatePath `
+        -Password $certificatePasswordText
+
+    Assert-DevelopmentSigningCertificate `
+        -Certificate $developmentCertificate `
+        -Path $CertificatePath `
+        -ExpectedSubject $publisher
 }
 
 if ([string]::IsNullOrWhiteSpace($CertificatePath)) {

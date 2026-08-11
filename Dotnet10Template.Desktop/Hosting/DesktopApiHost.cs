@@ -13,29 +13,31 @@ namespace Dotnet10Template.Desktop.Hosting;
 
 internal sealed class DesktopApiHost : IAsyncDisposable
 {
-    private const int ApiPort = 8080;
+    private const string Host = "127.0.0.1";
+    private const string PortEnvironmentVariable = "DOTNET10TEMPLATE_DESKTOP_API_PORT";
+    private const int StartupRetryCount = 5;
     private const string DefaultApiExecutableName = "Dotnet10Template.Api";
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ReadinessPollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5);
 
     private readonly HttpClient httpClient;
-    private readonly string connectionString;
+    private readonly DesktopPostgresHost.DesktopPostgresEndpoint postgresEndpoint;
     private Process? process;
+    private int port;
     private bool disposed;
 
-    public DesktopApiHost(string connectionString)
+    public DesktopApiHost(DesktopPostgresHost.DesktopPostgresEndpoint postgresEndpoint)
     {
-        this.connectionString = connectionString;
-        BaseUri = new Uri($"http://127.0.0.1:{ApiPort}");
+        this.postgresEndpoint = postgresEndpoint;
+        BaseUri = new Uri($"http://{Host}:0");
         httpClient = new HttpClient
         {
-            BaseAddress = BaseUri,
             Timeout = TimeSpan.FromSeconds(3)
         };
     }
 
-    public Uri BaseUri { get; }
+    public Uri BaseUri { get; private set; }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -44,24 +46,29 @@ internal sealed class DesktopApiHost : IAsyncDisposable
             return;
         }
 
-        EnsurePortIsAvailable();
-
         var apiEntryPoint = ResolveApiEntryPoint();
-        var startInfo = CreateStartInfo(apiEntryPoint);
+        var configuredPort = ResolveConfiguredPort();
+        var retryCount = configuredPort.HasValue ? 1 : StartupRetryCount;
 
-        process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("The bundled API process could not be started.");
-        DesktopHostLog.Append($"Started owned API process. PID: {process.Id}.");
+        for (var attempt = 1; attempt <= retryCount; attempt++)
+        {
+            port = configuredPort ?? SelectAvailableLoopbackPort();
+            BaseUri = new Uri($"http://{Host}:{port}");
 
-        try
-        {
-            await WaitUntilReadyAsync(cancellationToken);
-            DesktopHostLog.Append("Owned API process reported healthy.");
-        }
-        catch
-        {
-            await StopAsync();
-            throw;
+            DesktopHostLog.Append($"Selected desktop API endpoint: {BaseUri}.");
+
+            try
+            {
+                var startInfo = CreateStartInfo(apiEntryPoint);
+                await StartOnSelectedPortAsync(startInfo, cancellationToken);
+                return;
+            }
+            catch (Exception ex) when (!configuredPort.HasValue && attempt < retryCount)
+            {
+                DesktopHostLog.Append(
+                    $"API startup failed on {BaseUri}; retrying with a new dynamic port. {ex.Message}");
+                await StopAsync();
+            }
         }
     }
 
@@ -100,7 +107,7 @@ internal sealed class DesktopApiHost : IAsyncDisposable
 
             try
             {
-                using var response = await httpClient.GetAsync("/health", linked.Token);
+                using var response = await httpClient.GetAsync(new Uri(BaseUri, "/health"), linked.Token);
                 if (response.IsSuccessStatusCode)
                 {
                     return;
@@ -199,6 +206,26 @@ internal sealed class DesktopApiHost : IAsyncDisposable
         }
     }
 
+    private async Task StartOnSelectedPortAsync(
+        ProcessStartInfo startInfo,
+        CancellationToken cancellationToken)
+    {
+        process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("The bundled API process could not be started.");
+        DesktopHostLog.Append($"Started owned API process. PID: {process.Id}.");
+
+        try
+        {
+            await WaitUntilReadyAsync(cancellationToken);
+            DesktopHostLog.Append($"Owned API process reported healthy at {BaseUri}.");
+        }
+        catch
+        {
+            await StopAsync();
+            throw;
+        }
+    }
+
     private ProcessStartInfo CreateStartInfo(string apiEntryPoint)
     {
         var isExecutable = Path.GetExtension(apiEntryPoint)
@@ -214,9 +241,10 @@ internal sealed class DesktopApiHost : IAsyncDisposable
             WindowStyle = ProcessWindowStyle.Hidden
         };
 
-        startInfo.Environment["ASPNETCORE_URLS"] = $"http://127.0.0.1:{ApiPort}";
+        startInfo.Environment["ASPNETCORE_URLS"] = $"http://{Host}:{port}";
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
-        startInfo.Environment["ConnectionStrings__DefaultConnection"] = connectionString;
+        startInfo.Environment["ConnectionStrings__DefaultConnection"] =
+            postgresEndpoint.CreateConnectionString();
 
         return startInfo;
     }
@@ -263,27 +291,39 @@ internal sealed class DesktopApiHost : IAsyncDisposable
             ?? DefaultApiExecutableName;
     }
 
-    private static void EnsurePortIsAvailable()
+    private static int? ResolveConfiguredPort()
     {
-        TcpListener? listener = null;
+        var configuredPort = Environment.GetEnvironmentVariable(PortEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(configuredPort))
+        {
+            return null;
+        }
 
+        if (int.TryParse(configuredPort, out var port) &&
+            port is > IPEndPoint.MinPort and <= IPEndPoint.MaxPort)
+        {
+            return port;
+        }
+
+        throw new InvalidOperationException(
+            $"{PortEnvironmentVariable} must be a TCP port from 1 to 65535.");
+    }
+
+    private static int SelectAvailableLoopbackPort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0)
+        {
+            ExclusiveAddressUse = true
+        };
+
+        listener.Start();
         try
         {
-            listener = new TcpListener(IPAddress.Loopback, ApiPort)
-            {
-                ExclusiveAddressUse = true
-            };
-            listener.Start();
-        }
-        catch (SocketException ex)
-        {
-            throw new InvalidOperationException(
-                $"Port {ApiPort} is already in use. Close the process using http://127.0.0.1:{ApiPort} before starting the desktop app.",
-                ex);
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
         }
         finally
         {
-            listener?.Stop();
+            listener.Stop();
         }
     }
 }

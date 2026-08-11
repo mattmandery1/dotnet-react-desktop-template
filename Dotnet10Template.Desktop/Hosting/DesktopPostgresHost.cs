@@ -19,7 +19,7 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
     private const string Host = "127.0.0.1";
     private const string User = "postgres";
     private const string Database = "dotnet10template";
-    private const int DefaultPort = 55432;
+    private const int StartupRetryCount = 5;
 
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ReadinessPollInterval = TimeSpan.FromMilliseconds(500);
@@ -31,7 +31,8 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
     private readonly string applicationDataDirectory;
     private readonly string dataDirectory;
     private readonly string logFilePath;
-    private readonly int port;
+    private int port;
+    private DesktopPostgresEndpoint? endpoint;
     private Process? process;
     private bool disposed;
 
@@ -42,16 +43,13 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         binDirectory = Path.Combine(runtimeDirectory, "bin");
         dataDirectory = Path.GetFullPath(Path.Combine(applicationDataDirectory, "PostgresData"));
         logFilePath = Path.GetFullPath(Path.Combine(applicationDataDirectory, "postgres.log"));
-        port = ResolvePort();
-
-        ConnectionString =
-            $"Host={Host};Port={port};Database={Database};Username={User};Pooling=true";
 
         AppendPostgresLog("DesktopPostgresHost created.");
         AppendPostgresLog($"Application data directory: {applicationDataDirectory}");
     }
 
-    public string ConnectionString { get; }
+    public DesktopPostgresEndpoint Endpoint =>
+        endpoint ?? throw new InvalidOperationException("Desktop PostgreSQL has not selected an endpoint yet.");
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -61,36 +59,37 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         }
 
         EnsureRequiredBinariesExist();
-        EnsurePortIsAvailable();
         Directory.CreateDirectory(applicationDataDirectory);
 
-        if (!IsInitialized())
-        {
-            CleanPartialDataDirectory();
-            await InitializeAsync(cancellationToken);
-        }
+        var configuredPort = ResolveConfiguredPort();
+        var retryCount = configuredPort.HasValue ? 1 : StartupRetryCount;
 
-        var startInfo = CreatePostgresStartInfo();
-        AppendPostgresLog("Starting desktop PostgreSQL.");
-        AppendPostgresLog($"Runtime directory: {runtimeDirectory}");
-        AppendPostgresLog($"Data directory: {dataDirectory}");
-        process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("The desktop PostgreSQL process could not be started.");
-        AppendPostgresLog($"Started owned PostgreSQL process. PID: {process.Id}.");
-        process.OutputDataReceived += (_, args) => AppendPostgresLog(args.Data);
-        process.ErrorDataReceived += (_, args) => AppendPostgresLog(args.Data);
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
+        for (var attempt = 1; attempt <= retryCount; attempt++)
+        {
+            port = configuredPort ?? SelectAvailableLoopbackPort();
+            EnsureResolvedPort(port);
+            endpoint = new DesktopPostgresEndpoint(Host, port, Database, User);
 
-        try
-        {
-            await WaitUntilReadyAsync(cancellationToken);
-            await EnsureApplicationDatabaseAsync(cancellationToken);
-        }
-        catch
-        {
-            await StopAsync();
-            throw;
+            AppendPostgresLog($"Resolved desktop PostgreSQL port: {port}.");
+            AppendPostgresLog($"Selected desktop PostgreSQL endpoint: {Endpoint.Host}:{Endpoint.Port}.");
+
+            try
+            {
+                if (!IsInitialized())
+                {
+                    CleanPartialDataDirectory();
+                    await InitializeAsync(cancellationToken);
+                }
+
+                await StartOnSelectedPortAsync(cancellationToken);
+                return;
+            }
+            catch (Exception ex) when (!configuredPort.HasValue && attempt < retryCount)
+            {
+                AppendPostgresLog(
+                    $"Desktop PostgreSQL startup failed on {Host}:{port}; retrying with a new dynamic port. {ex.Message}");
+                await StopAsync();
+            }
         }
     }
 
@@ -321,8 +320,37 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         Directory.Delete(dataDirectory, recursive: true);
     }
 
+    private async Task StartOnSelectedPortAsync(CancellationToken cancellationToken)
+    {
+        var startInfo = CreatePostgresStartInfo();
+        AppendPostgresLog("Starting desktop PostgreSQL.");
+        AppendPostgresLog($"Runtime directory: {runtimeDirectory}");
+        AppendPostgresLog($"Data directory: {dataDirectory}");
+        process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("The desktop PostgreSQL process could not be started.");
+        AppendPostgresLog($"Started owned PostgreSQL process. PID: {process.Id}.");
+        process.OutputDataReceived += (_, args) => AppendPostgresLog(args.Data);
+        process.ErrorDataReceived += (_, args) => AppendPostgresLog(args.Data);
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        try
+        {
+            await WaitUntilReadyAsync(cancellationToken);
+            await EnsureApplicationDatabaseAsync(cancellationToken);
+            AppendPostgresLog($"Desktop PostgreSQL ready at {Endpoint.Host}:{Endpoint.Port}.");
+        }
+        catch
+        {
+            await StopAsync();
+            throw;
+        }
+    }
+
     private ProcessStartInfo CreatePostgresStartInfo()
     {
+        EnsureResolvedPort(port);
+
         var startInfo = new ProcessStartInfo
         {
             FileName = GetBinaryPath("postgres.exe"),
@@ -370,6 +398,8 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         CancellationToken cancellationToken,
         bool throwOnCancellation = true)
     {
+        EnsureResolvedPort(port);
+
         var startInfo = new ProcessStartInfo
         {
             FileName = GetBinaryPath(toolName),
@@ -467,30 +497,6 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         }
     }
 
-    private void EnsurePortIsAvailable()
-    {
-        TcpListener? listener = null;
-
-        try
-        {
-            listener = new TcpListener(IPAddress.Parse(Host), port)
-            {
-                ExclusiveAddressUse = true
-            };
-            listener.Start();
-        }
-        catch (SocketException ex)
-        {
-            throw new InvalidOperationException(
-                $"Desktop PostgreSQL port {port} is already in use on {Host}. Set {PortEnvironmentVariable} to a free local port or close the unrelated process using that port.",
-                ex);
-        }
-        finally
-        {
-            listener?.Stop();
-        }
-    }
-
     private string GetBinaryPath(string binaryName)
     {
         return Path.Combine(binDirectory, binaryName);
@@ -554,22 +560,61 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         }
     }
 
-    private static int ResolvePort()
+    private int? ResolveConfiguredPort()
     {
         var configuredPort = Environment.GetEnvironmentVariable(PortEnvironmentVariable);
         if (string.IsNullOrWhiteSpace(configuredPort))
         {
-            return DefaultPort;
+            AppendPostgresLog(
+                $"{PortEnvironmentVariable} is not set; desktop PostgreSQL will use a dynamically selected loopback port.");
+            return null;
         }
+
+        AppendPostgresLog($"{PortEnvironmentVariable} override requested: {configuredPort}.");
 
         if (int.TryParse(configuredPort, CultureInfo.InvariantCulture, out var port) &&
             port is > IPEndPoint.MinPort and <= IPEndPoint.MaxPort)
         {
+            EnsureResolvedPort(port);
             return port;
         }
 
         throw new InvalidOperationException(
-            $"{PortEnvironmentVariable} must be a TCP port from 1 to 65535.");
+            $"{PortEnvironmentVariable} must be a TCP port from 1 to 65535. The value '{configuredPort}' is not valid; unset it to use dynamic port allocation.");
+    }
+
+    private static int SelectAvailableLoopbackPort()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0)
+        {
+            ExclusiveAddressUse = true
+        };
+
+        listener.Start();
+        try
+        {
+            if (listener.LocalEndpoint is not IPEndPoint endpoint)
+            {
+                throw new InvalidOperationException(
+                    "Windows did not return an IP endpoint for the temporary PostgreSQL port listener.");
+            }
+
+            EnsureResolvedPort(endpoint.Port);
+            return endpoint.Port;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static void EnsureResolvedPort(int resolvedPort)
+    {
+        if (resolvedPort is <= IPEndPoint.MinPort or > IPEndPoint.MaxPort)
+        {
+            throw new InvalidOperationException(
+                $"Desktop PostgreSQL requires a resolved TCP port from 1 to 65535, but '{resolvedPort}' was selected.");
+        }
     }
 
     private static string GetApplicationDataDirectory()
@@ -629,5 +674,15 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
                 ? $"Exit code: {ExitCode}."
                 : message;
         }
+    }
+
+    internal sealed record DesktopPostgresEndpoint(
+        string Host,
+        int Port,
+        string Database,
+        string User)
+    {
+        public string CreateConnectionString() =>
+            $"Host={Host};Port={Port};Database={Database};Username={User};Pooling=true";
     }
 }

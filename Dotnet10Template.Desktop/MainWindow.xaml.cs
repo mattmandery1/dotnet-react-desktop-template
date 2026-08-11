@@ -58,10 +58,12 @@ namespace Dotnet10Template.Desktop
                 await postgresHost.StartAsync();
                 DesktopHostLog.Append("PostgreSQL startup completed.");
 
-                apiHost = new DesktopApiHost(postgresHost.ConnectionString);
+                apiHost = new DesktopApiHost(postgresHost.Endpoint);
                 DesktopHostLog.Append("API startup beginning.");
                 await apiHost.StartAsync();
                 DesktopHostLog.Append("API startup completed.");
+                DesktopHostLog.Append(
+                    $"Desktop runtime endpoints: PostgreSQL {postgresHost.Endpoint.Host}:{postgresHost.Endpoint.Port}; API {apiHost.BaseUri}.");
 
                 DesktopHostLog.Append("WebView2 initialization beginning.");
                 await AppWebView.EnsureCoreWebView2Async();
