@@ -14,6 +14,7 @@
     <Nullable>enable</Nullable>
     <WebProjectDir>$(MSBuildProjectDirectory)\..\src\dotnet10template.web\</WebProjectDir>
     <ApiProjectPath>$(MSBuildProjectDirectory)\..\src\Dotnet10Template.Api\Dotnet10Template.Api.csproj</ApiProjectPath>
+    <PostgresRuntimeDir>$(MSBuildProjectDirectory)\Runtime\Postgres\</PostgresRuntimeDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -49,6 +50,16 @@
       <_Parameter1>DesktopApiPublishPath</_Parameter1>
       <_Parameter2>$(OutDir)Api</_Parameter2>
     </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>DesktopPostgresRuntimePath</_Parameter1>
+      <_Parameter2>$(PostgresRuntimeDir)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Runtime\Postgres\**\*.*"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!--

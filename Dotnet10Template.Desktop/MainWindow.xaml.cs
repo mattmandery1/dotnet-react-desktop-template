@@ -1,4 +1,5 @@
 using Dotnet10Template.Desktop.Hosting;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.Web.WebView2.Core;
 using System;
@@ -8,6 +9,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Dotnet10Template.Desktop
@@ -15,18 +17,24 @@ namespace Dotnet10Template.Desktop
     public sealed partial class MainWindow : Window
     {
         private const string AppHostName = "app.local";
-        private readonly DesktopApiHost apiHost = new();
+        private readonly DesktopPostgresHost postgresHost = new();
         private readonly HttpClient apiClient = new(new HttpClientHandler
         {
             AllowAutoRedirect = false
         });
+        private DesktopApiHost? apiHost;
         private string? appFolder;
+        private int shutdownStarted;
+        private bool finalCloseAllowed;
+        private Task? shutdownTask;
 
         public MainWindow()
         {
             InitializeComponent();
             AppWebView.Loaded += AppWebView_Loaded;
+            AppWindow.Closing += AppWindow_Closing;
             Closed += MainWindow_Closed;
+            AppDomain.CurrentDomain.ProcessExit += CurrentDomain_ProcessExit;
         }
 
         private async void AppWebView_Loaded(object sender, RoutedEventArgs e)
@@ -43,7 +51,11 @@ namespace Dotnet10Template.Desktop
                     throw new FileNotFoundException("The bundled React app was not found. Build the desktop project to generate and copy the web assets.", indexPath);
                 }
 
+                await postgresHost.StartAsync();
+
+                apiHost = new DesktopApiHost(postgresHost.ConnectionString);
                 await apiHost.StartAsync();
+
                 await AppWebView.EnsureCoreWebView2Async();
                 RegisterAppHost();
 
@@ -55,15 +67,108 @@ namespace Dotnet10Template.Desktop
             }
         }
 
-        private async void MainWindow_Closed(object sender, WindowEventArgs args)
+        private async void AppWindow_Closing(
+            AppWindow sender,
+            AppWindowClosingEventArgs args)
         {
-            if (AppWebView.CoreWebView2 is not null)
+            if (finalCloseAllowed)
             {
-                AppWebView.CoreWebView2.WebResourceRequested -= CoreWebView2_WebResourceRequested;
+                DesktopHostLog.Append("Final window close allowed after owned-process shutdown.");
+                return;
             }
 
-            apiClient.Dispose();
-            await apiHost.DisposeAsync();
+            args.Cancel = true;
+            DesktopHostLog.Append("Window close intercepted; owned-process shutdown starting.");
+
+            try
+            {
+                shutdownTask ??= ShutdownOwnedProcessesAsync();
+                await shutdownTask;
+            }
+            catch (Exception ex)
+            {
+                DesktopHostLog.Append($"Window close shutdown completed with errors: {ex}");
+            }
+            finally
+            {
+                finalCloseAllowed = true;
+                DesktopHostLog.Append("Owned-process shutdown finished; requesting final window close.");
+                Close();
+            }
+        }
+
+        private void MainWindow_Closed(object sender, WindowEventArgs args)
+        {
+            ShutdownBlocking();
+        }
+
+        private void CurrentDomain_ProcessExit(object? sender, EventArgs e)
+        {
+            ShutdownBlocking();
+        }
+
+        private void ShutdownBlocking()
+        {
+            try
+            {
+                Task.Run(() => shutdownTask ??= ShutdownOwnedProcessesAsync())
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (Exception ex)
+            {
+                DesktopHostLog.Append($"Desktop shutdown completed with errors: {ex}");
+            }
+        }
+
+        private async Task ShutdownOwnedProcessesAsync()
+        {
+            if (Interlocked.Exchange(ref shutdownStarted, 1) == 1)
+            {
+                return;
+            }
+
+            DesktopHostLog.Append("Desktop shutdown requested.");
+
+            AppDomain.CurrentDomain.ProcessExit -= CurrentDomain_ProcessExit;
+
+            try
+            {
+                apiClient.Dispose();
+
+                if (apiHost is not null)
+                {
+                    DesktopHostLog.Append("API shutdown started during desktop shutdown.");
+                    await apiHost.DisposeAsync().ConfigureAwait(false);
+                    DesktopHostLog.Append("API shutdown completed during desktop shutdown.");
+                }
+
+                DesktopHostLog.Append("PostgreSQL shutdown started during desktop shutdown.");
+                await postgresHost.DisposeAsync().ConfigureAwait(false);
+                DesktopHostLog.Append("PostgreSQL shutdown completed during desktop shutdown.");
+            }
+            catch (Exception ex)
+            {
+                DesktopHostLog.Append($"Desktop shutdown failed: {ex}");
+                throw;
+            }
+        }
+
+        private void DetachUiHandlers()
+        {
+            try
+            {
+                AppWindow.Closing -= AppWindow_Closing;
+
+                if (AppWebView.CoreWebView2 is not null)
+                {
+                    AppWebView.CoreWebView2.WebResourceRequested -= CoreWebView2_WebResourceRequested;
+                }
+            }
+            catch (Exception ex)
+            {
+                DesktopHostLog.Append($"UI handler detach failed during shutdown: {ex.Message}");
+            }
         }
 
         private void RegisterAppHost()
@@ -209,6 +314,11 @@ namespace Dotnet10Template.Desktop
 
         private Uri CreateApiUri(Uri requestUri)
         {
+            if (apiHost is null)
+            {
+                throw new InvalidOperationException("The bundled API is not running.");
+            }
+
             return new Uri(apiHost.BaseUri, requestUri.PathAndQuery);
         }
 

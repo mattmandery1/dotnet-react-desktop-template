@@ -285,6 +285,13 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 src/dotnet10template.web/dist/
+Dotnet10Template.Desktop/Runtime/Postgres/*
+!Dotnet10Template.Desktop/Runtime/Postgres/bin/
+!Dotnet10Template.Desktop/Runtime/Postgres/lib/
+!Dotnet10Template.Desktop/Runtime/Postgres/share/
+!Dotnet10Template.Desktop/Runtime/Postgres/bin/.gitkeep
+!Dotnet10Template.Desktop/Runtime/Postgres/lib/.gitkeep
+!Dotnet10Template.Desktop/Runtime/Postgres/share/.gitkeep
 
 # Visual Studio 6 build log
 *.plg

@@ -1,16 +1,32 @@
 <Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
   <Folder Name="/src/">
     <Project Path="Dotnet10Template.Desktop/Dotnet10Template.Desktop.csproj" Id="e7db6946-de82-4001-93b4-90e6d658b6f9">
       <Platform Project="x64" />
       <Deploy />
     </Project>
-    <Project Path="src/Dotnet10Template.Api/Dotnet10Template.Api.csproj" />
-    <Project Path="src/Dotnet10Template.Application/Dotnet10Template.Application.csproj" />
-    <Project Path="src/Dotnet10Template.Domain/Dotnet10Template.Domain.csproj" />
-    <Project Path="src/Dotnet10Template.Infrastructure/Dotnet10Template.Infrastructure.csproj" />
+    <Project Path="src/Dotnet10Template.Api/Dotnet10Template.Api.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Dotnet10Template.Application/Dotnet10Template.Application.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Dotnet10Template.Domain/Dotnet10Template.Domain.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Dotnet10Template.Infrastructure/Dotnet10Template.Infrastructure.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Dotnet10Template.IntegrationTests/Dotnet10Template.IntegrationTests.csproj" />
-    <Project Path="tests/Dotnet10Template.UnitTests/Dotnet10Template.UnitTests.csproj" />
+    <Project Path="tests/Dotnet10Template.IntegrationTests/Dotnet10Template.IntegrationTests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="tests/Dotnet10Template.UnitTests/Dotnet10Template.UnitTests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
   </Folder>
 </Solution>

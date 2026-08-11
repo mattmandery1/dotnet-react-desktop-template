@@ -17,12 +17,16 @@ internal sealed class DesktopApiHost : IAsyncDisposable
     private const string ApiAssemblyName = "Dotnet10Template.Api";
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ReadinessPollInterval = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5);
 
     private readonly HttpClient httpClient;
+    private readonly string connectionString;
     private Process? process;
+    private bool disposed;
 
-    public DesktopApiHost()
+    public DesktopApiHost(string connectionString)
     {
+        this.connectionString = connectionString;
         BaseUri = new Uri($"http://127.0.0.1:{ApiPort}");
         httpClient = new HttpClient
         {
@@ -47,10 +51,12 @@ internal sealed class DesktopApiHost : IAsyncDisposable
 
         process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("The bundled API process could not be started.");
+        DesktopHostLog.Append($"Started owned API process. PID: {process.Id}.");
 
         try
         {
             await WaitUntilReadyAsync(cancellationToken);
+            DesktopHostLog.Append("Owned API process reported healthy.");
         }
         catch
         {
@@ -61,8 +67,21 @@ internal sealed class DesktopApiHost : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await StopAsync();
-        httpClient.Dispose();
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed = true;
+
+        try
+        {
+            await StopAsync();
+        }
+        finally
+        {
+            httpClient.Dispose();
+        }
     }
 
     private async Task WaitUntilReadyAsync(CancellationToken cancellationToken)
@@ -117,32 +136,62 @@ internal sealed class DesktopApiHost : IAsyncDisposable
     {
         if (process is null)
         {
+            DesktopHostLog.Append("API shutdown requested, but this desktop instance has no owned API process.");
             return;
         }
 
         var apiProcess = process;
         process = null;
+        DesktopHostLog.Append($"API shutdown requested for owned process PID {apiProcess.Id}.");
 
         try
         {
             if (!apiProcess.HasExited)
             {
-                apiProcess.CloseMainWindow();
+                var gracefulShutdownRequested = false;
 
-                using var gracefulTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                 try
                 {
-                    await apiProcess.WaitForExitAsync(gracefulTimeout.Token);
+                    gracefulShutdownRequested = apiProcess.CloseMainWindow();
+                    DesktopHostLog.Append(gracefulShutdownRequested
+                        ? $"CloseMainWindow sent to API process PID {apiProcess.Id}."
+                        : $"API process PID {apiProcess.Id} has no main window; graceful shutdown is unavailable.");
                 }
-                catch (OperationCanceledException)
+                catch (InvalidOperationException ex)
                 {
-                    if (!apiProcess.HasExited)
+                    DesktopHostLog.Append($"Unable to request graceful API shutdown for PID {apiProcess.Id}: {ex.Message}");
+                }
+
+                if (gracefulShutdownRequested)
+                {
+                    using var gracefulTimeout = new CancellationTokenSource(ShutdownTimeout);
+                    try
                     {
-                        apiProcess.Kill(entireProcessTree: true);
-                        await apiProcess.WaitForExitAsync();
+                        await apiProcess.WaitForExitAsync(gracefulTimeout.Token);
+                        DesktopHostLog.Append($"Owned API process PID {apiProcess.Id} stopped. Exit code: {apiProcess.ExitCode}.");
+                    }
+                    catch (OperationCanceledException)
+                    {
                     }
                 }
+
+                if (!apiProcess.HasExited)
+                {
+                    DesktopHostLog.Append($"Killing owned API process tree for PID {apiProcess.Id}.");
+                    apiProcess.Kill(entireProcessTree: true);
+                    await apiProcess.WaitForExitAsync();
+                    DesktopHostLog.Append($"Owned API process PID {apiProcess.Id} was killed. Exit code: {apiProcess.ExitCode}.");
+                }
             }
+            else
+            {
+                DesktopHostLog.Append($"Owned API process PID {apiProcess.Id} had already exited with code {apiProcess.ExitCode}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            DesktopHostLog.Append($"API stop failed for owned process PID {apiProcess.Id}: {ex}");
+            throw;
         }
         finally
         {
@@ -150,7 +199,7 @@ internal sealed class DesktopApiHost : IAsyncDisposable
         }
     }
 
-    private static ProcessStartInfo CreateStartInfo(string apiEntryPoint)
+    private ProcessStartInfo CreateStartInfo(string apiEntryPoint)
     {
         var isExecutable = Path.GetExtension(apiEntryPoint)
             .Equals(".exe", StringComparison.OrdinalIgnoreCase);
@@ -167,8 +216,7 @@ internal sealed class DesktopApiHost : IAsyncDisposable
 
         startInfo.Environment["ASPNETCORE_URLS"] = $"http://127.0.0.1:{ApiPort}";
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
-        startInfo.Environment["ConnectionStrings__DefaultConnection"] =
-            "Host=localhost;Port=5432;Database=dotnet10template;Username=postgres;Password=postgres";
+        startInfo.Environment["ConnectionStrings__DefaultConnection"] = connectionString;
 
         return startInfo;
     }
