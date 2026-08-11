@@ -4,6 +4,8 @@
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>Dotnet10Template.Desktop</RootNamespace>
+    <AssemblyName>$(DesktopExecutableName)</AssemblyName>
+    <Version>$(ProductVersion)</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
@@ -15,6 +17,8 @@
     <WebProjectDir>$(MSBuildProjectDirectory)\..\src\dotnet10template.web\</WebProjectDir>
     <ApiProjectPath>$(MSBuildProjectDirectory)\..\src\Dotnet10Template.Api\Dotnet10Template.Api.csproj</ApiProjectPath>
     <PostgresRuntimeDir>$(MSBuildProjectDirectory)\Runtime\Postgres\</PostgresRuntimeDir>
+    <DesktopApiRuntimeArgs Condition="'$(RuntimeIdentifier)' != ''">--runtime &quot;$(RuntimeIdentifier)&quot; --self-contained true</DesktopApiRuntimeArgs>
+    <DesktopApiRuntimeArgs Condition="'$(RuntimeIdentifier)' == ''">--no-self-contained</DesktopApiRuntimeArgs>
   </PropertyGroup>
 
   <ItemGroup>
@@ -51,6 +55,10 @@
       <_Parameter2>$(OutDir)Api</_Parameter2>
     </AssemblyAttribute>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>DesktopApiExecutableName</_Parameter1>
+      <_Parameter2>$(ApiExecutableName)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>DesktopPostgresRuntimePath</_Parameter1>
       <_Parameter2>$(PostgresRuntimeDir)</_Parameter2>
     </AssemblyAttribute>
@@ -61,6 +69,16 @@
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="ExcludePostgresRuntimeFromPriIndex"
+          BeforeTargets="_GenerateProjectPriConfigurationFiles">
+    <ItemGroup>
+      <PriOutputs Remove="@(PriOutputs)"
+                  Condition="$([System.String]::Copy('%(PriOutputs.TargetPath)').StartsWith('Runtime\Postgres\'))" />
+      <PriOutputs Remove="@(PriOutputs)"
+                  Condition="$([System.String]::Copy('%(PriOutputs.TargetPath)').StartsWith('Files\Runtime\Postgres\'))" />
+    </ItemGroup>
+  </Target>
 
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
@@ -124,7 +142,7 @@
           Condition="'$(DesignTimeBuild)' != 'true'"
           AfterTargets="Build">
     <RemoveDir Directories="$(OutDir)Api" />
-    <Exec Command="dotnet publish &quot;$(ApiProjectPath)&quot; --nologo --configuration &quot;$(Configuration)&quot; --output &quot;$(OutDir)Api&quot; --no-self-contained -p:UseAppHost=true" />
+    <Exec Command="dotnet publish &quot;$(ApiProjectPath)&quot; --nologo --configuration &quot;$(Configuration)&quot; $(DesktopApiRuntimeArgs) --output &quot;$(OutDir)Api&quot; -p:UseAppHost=true -p:PublishSingleFile=false" />
     <ItemGroup>
       <DesktopApiAsset Include="$(OutDir)Api\**\*.*" />
     </ItemGroup>
@@ -132,5 +150,20 @@
     <MakeDir Directories="$(OutDir)AppX\Api" />
     <Copy SourceFiles="@(DesktopApiAsset)"
           DestinationFiles="@(DesktopApiAsset->'$(OutDir)AppX\Api\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <Target Name="IncludeDesktopOwnedRuntimePayload"
+          BeforeTargets="_GenerateAppxPackageFile"
+          DependsOnTargets="CopyDesktopWebAssets;PublishDesktopApi">
+    <ItemGroup>
+      <DesktopPackagedWebAsset Include="$(OutDir)WebAssets\**\*.*" />
+      <DesktopPackagedApiAsset Include="$(OutDir)Api\**\*.*" />
+      <AppxPackagePayload Include="@(DesktopPackagedWebAsset)">
+        <TargetPath>WebAssets\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+      </AppxPackagePayload>
+      <AppxPackagePayload Include="@(DesktopPackagedApiAsset)">
+        <TargetPath>Api\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+      </AppxPackagePayload>
+    </ItemGroup>
   </Target>
 </Project>

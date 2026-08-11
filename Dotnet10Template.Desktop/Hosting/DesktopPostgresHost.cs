@@ -37,9 +37,9 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
 
     public DesktopPostgresHost()
     {
-        runtimeDirectory = ResolveRuntimeDirectory();
-        binDirectory = Path.Combine(runtimeDirectory, "bin");
         applicationDataDirectory = GetApplicationDataDirectory();
+        runtimeDirectory = PrepareWritableRuntimeDirectory(ResolveRuntimeDirectory(), applicationDataDirectory);
+        binDirectory = Path.Combine(runtimeDirectory, "bin");
         dataDirectory = Path.GetFullPath(Path.Combine(applicationDataDirectory, "PostgresData"));
         logFilePath = Path.GetFullPath(Path.Combine(applicationDataDirectory, "postgres.log"));
         port = ResolvePort();
@@ -512,6 +512,46 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
                 !string.IsNullOrWhiteSpace(candidate) &&
                 Directory.Exists(candidate))
             ?? Path.Combine(AppContext.BaseDirectory, RuntimeRelativePath);
+    }
+
+    private static string PrepareWritableRuntimeDirectory(string sourceRuntimeDirectory, string applicationDataDirectory)
+    {
+        var writableRuntimeDirectory = Path.GetFullPath(Path.Combine(applicationDataDirectory, "PostgresRuntime"));
+        var writablePostgresPath = Path.Combine(writableRuntimeDirectory, "bin", "postgres.exe");
+
+        if (File.Exists(writablePostgresPath))
+        {
+            return writableRuntimeDirectory;
+        }
+
+        if (!Directory.Exists(sourceRuntimeDirectory))
+        {
+            return sourceRuntimeDirectory;
+        }
+
+        Directory.CreateDirectory(applicationDataDirectory);
+        if (Directory.Exists(writableRuntimeDirectory))
+        {
+            Directory.Delete(writableRuntimeDirectory, recursive: true);
+        }
+
+        CopyDirectory(sourceRuntimeDirectory, writableRuntimeDirectory);
+        return writableRuntimeDirectory;
+    }
+
+    private static void CopyDirectory(string sourceDirectory, string destinationDirectory)
+    {
+        Directory.CreateDirectory(destinationDirectory);
+
+        foreach (var file in Directory.EnumerateFiles(sourceDirectory))
+        {
+            File.Copy(file, Path.Combine(destinationDirectory, Path.GetFileName(file)), overwrite: true);
+        }
+
+        foreach (var directory in Directory.EnumerateDirectories(sourceDirectory))
+        {
+            CopyDirectory(directory, Path.Combine(destinationDirectory, Path.GetFileName(directory)));
+        }
     }
 
     private static int ResolvePort()

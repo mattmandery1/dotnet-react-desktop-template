@@ -1,4 +1,5 @@
 <Project>
+  <Import Project="Directory.Product.props" Condition="Exists('Directory.Product.props')" />
 
   <PropertyGroup>
     <Nullable>enable</Nullable>

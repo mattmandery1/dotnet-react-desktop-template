@@ -14,7 +14,7 @@ namespace Dotnet10Template.Desktop.Hosting;
 internal sealed class DesktopApiHost : IAsyncDisposable
 {
     private const int ApiPort = 8080;
-    private const string ApiAssemblyName = "Dotnet10Template.Api";
+    private const string DefaultApiExecutableName = "Dotnet10Template.Api";
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ReadinessPollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5);
@@ -223,6 +223,7 @@ internal sealed class DesktopApiHost : IAsyncDisposable
 
     private static string ResolveApiEntryPoint()
     {
+        var apiExecutableName = GetApiExecutableName();
         var apiFolders = new[]
         {
             Path.Combine(AppContext.BaseDirectory, "Api"),
@@ -235,13 +236,13 @@ internal sealed class DesktopApiHost : IAsyncDisposable
 
         foreach (var apiFolder in apiFolders.Where(path => !string.IsNullOrWhiteSpace(path)))
         {
-            var executablePath = Path.Combine(apiFolder!, $"{ApiAssemblyName}.exe");
+            var executablePath = Path.Combine(apiFolder!, $"{apiExecutableName}.exe");
             if (File.Exists(executablePath))
             {
                 return executablePath;
             }
 
-            var dllPath = Path.Combine(apiFolder!, $"{ApiAssemblyName}.dll");
+            var dllPath = Path.Combine(apiFolder!, $"{apiExecutableName}.dll");
             if (File.Exists(dllPath))
             {
                 return dllPath;
@@ -250,7 +251,16 @@ internal sealed class DesktopApiHost : IAsyncDisposable
 
         throw new FileNotFoundException(
             "The bundled API was not found. Build the desktop project to publish and copy the API artifact.",
-            Path.Combine(AppContext.BaseDirectory, "Api", $"{ApiAssemblyName}.dll"));
+            Path.Combine(AppContext.BaseDirectory, "Api", $"{GetApiExecutableName()}.dll"));
+    }
+
+    private static string GetApiExecutableName()
+    {
+        return Assembly.GetExecutingAssembly()
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == "DesktopApiExecutableName")
+            ?.Value
+            ?? DefaultApiExecutableName;
     }
 
     private static void EnsurePortIsAvailable()

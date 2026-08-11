@@ -9,15 +9,15 @@
   IgnorableNamespaces="uap rescap systemai">
 
   <Identity
-    Name="a18de625-05d3-472a-9ab0-1a3b95b795dd"
-    Publisher="CN=mattm"
+    Name="Dotnet10Template.Desktop"
+    Publisher="CN=Dotnet10TemplateDevelopment"
     Version="1.0.0.0" />
 
-  <mp:PhoneIdentity PhoneProductId="a18de625-05d3-472a-9ab0-1a3b95b795dd" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="11111111-1111-1111-1111-111111111111" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>Dotnet10Template.Desktop</DisplayName>
-    <PublisherDisplayName>mattm</PublisherDisplayName>
+    <DisplayName>Dotnet10Template Desktop</DisplayName>
+    <PublisherDisplayName>Dotnet10Template Development</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -35,8 +35,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="Dotnet10Template.Desktop"
-        Description="Dotnet10Template.Desktop"
+        DisplayName="Dotnet10Template Desktop"
+        Description="Dotnet10Template Desktop"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

@@ -31,6 +31,7 @@ namespace Dotnet10Template.Desktop
         public MainWindow()
         {
             InitializeComponent();
+            DesktopHostLog.Append("MainWindow initialized.");
             AppWebView.Loaded += AppWebView_Loaded;
             AppWindow.Closing += AppWindow_Closing;
             Closed += MainWindow_Closed;
@@ -43,7 +44,9 @@ namespace Dotnet10Template.Desktop
 
             try
             {
+                DesktopHostLog.Append("WebView loaded; desktop startup beginning.");
                 appFolder = GetReactAppFolder();
+                DesktopHostLog.Append($"Resolved React app folder: {appFolder}");
                 var indexPath = Path.Combine(appFolder, "index.html");
 
                 if (!File.Exists(indexPath))
@@ -51,18 +54,26 @@ namespace Dotnet10Template.Desktop
                     throw new FileNotFoundException("The bundled React app was not found. Build the desktop project to generate and copy the web assets.", indexPath);
                 }
 
+                DesktopHostLog.Append("PostgreSQL startup beginning.");
                 await postgresHost.StartAsync();
+                DesktopHostLog.Append("PostgreSQL startup completed.");
 
                 apiHost = new DesktopApiHost(postgresHost.ConnectionString);
+                DesktopHostLog.Append("API startup beginning.");
                 await apiHost.StartAsync();
+                DesktopHostLog.Append("API startup completed.");
 
+                DesktopHostLog.Append("WebView2 initialization beginning.");
                 await AppWebView.EnsureCoreWebView2Async();
+                DesktopHostLog.Append("WebView2 initialization completed.");
                 RegisterAppHost();
 
                 AppWebView.Source = new Uri($"https://{AppHostName}/index.html");
+                DesktopHostLog.Append("Desktop startup completed.");
             }
             catch (Exception ex)
             {
+                DesktopHostLog.Append($"Desktop startup failed: {ex}");
                 ShowStartupError(ex);
             }
         }

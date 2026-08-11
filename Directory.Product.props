@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <ProductDisplayName>Dotnet10Template Desktop</ProductDisplayName>
+    <ProductPackageIdentityName>Dotnet10Template.Desktop</ProductPackageIdentityName>
+    <ProductPublisher>CN=Dotnet10TemplateDevelopment</ProductPublisher>
+    <ProductPublisherDisplayName>Dotnet10Template Development</ProductPublisherDisplayName>
+    <ProductVersion>1.0.0</ProductVersion>
+    <ProductPackageVersion>1.0.0.0</ProductPackageVersion>
+    <DesktopExecutableName>Dotnet10Template.Desktop</DesktopExecutableName>
+    <ApiExecutableName>Dotnet10Template.Api</ApiExecutableName>
+  </PropertyGroup>
+</Project>

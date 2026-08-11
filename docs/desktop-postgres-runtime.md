@@ -29,17 +29,29 @@ Dotnet10Template.Desktop\Runtime\Postgres\bin\psql.exe
 Dotnet10Template.Desktop\Runtime\Postgres\bin\createdb.exe
 ```
 
-The desktop project copies `Runtime/Postgres/**` to the build and publish output when the folder is present.
+The desktop project copies `Runtime/Postgres/**` to the build, publish, and packaged output when the folder is present. In packaged MSIX runs, the app copies that private runtime to the per-user app data directory and executes PostgreSQL from there.
 
 ## Data directory
 
 Desktop data is stored outside the app install/output folder:
 
 ```text
-%LOCALAPPDATA%/Dotnet10Template/PostgresData
+<per-user app data>/Dotnet10Template/PostgresData
 ```
 
 The desktop app initializes this directory with `initdb` on first launch and reuses it on later launches.
+
+In packaged runs, `<per-user app data>` is the package LocalState path returned by Windows App SDK. In ordinary unpackaged development runs, the fallback is:
+
+```text
+%LOCALAPPDATA%/Dotnet10Template
+```
+
+The writable packaged PostgreSQL runtime copy is stored beside the data folder:
+
+```text
+<per-user app data>/Dotnet10Template/PostgresRuntime
+```
 
 ## Local binding and port
 

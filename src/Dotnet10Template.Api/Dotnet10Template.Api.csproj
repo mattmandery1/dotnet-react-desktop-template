@@ -8,6 +8,8 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
     <Platforms>AnyCPU;x64</Platforms>
+    <AssemblyName>$(ApiExecutableName)</AssemblyName>
+    <Version>$(ProductVersion)</Version>
   </PropertyGroup>
 
   <ItemGroup>

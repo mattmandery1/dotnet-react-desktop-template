@@ -372,3 +372,6 @@ FodyWeavers.xsd
 
 # Main Env files
 .env
+
+# Local desktop package signing certificates
+.certificates/
