@@ -1,6 +1,7 @@
 FROM node:24-alpine AS build
 WORKDIR /app
 
+COPY Directory.Product.props /Directory.Product.props
 COPY src/dotnet10template.web/package*.json ./
 RUN npm ci
 

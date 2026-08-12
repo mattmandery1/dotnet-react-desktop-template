@@ -4,10 +4,27 @@ import { fileURLToPath } from 'node:url'
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url))
 const webRoot = path.resolve(scriptDirectory, '..')
-const repoRoot = path.resolve(webRoot, '..', '..')
-const productPropsPath = path.join(repoRoot, 'Directory.Product.props')
+const productPropsPath = findProductPropsPath(webRoot)
 
 const productProps = fs.readFileSync(productPropsPath, 'utf8')
+
+function findProductPropsPath(startDirectory) {
+    let currentDirectory = startDirectory
+
+    while (true) {
+        const candidate = path.join(currentDirectory, 'Directory.Product.props')
+        if (fs.existsSync(candidate)) {
+            return candidate
+        }
+
+        const parentDirectory = path.dirname(currentDirectory)
+        if (parentDirectory === currentDirectory) {
+            throw new Error(`Directory.Product.props was not found from ${startDirectory}.`)
+        }
+
+        currentDirectory = parentDirectory
+    }
+}
 
 function readProductProperty(name) {
     const match = productProps.match(new RegExp(`<${name}>([^<]+)</${name}>`))
