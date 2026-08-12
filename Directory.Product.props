@@ -1,12 +1,24 @@
 <Project>
   <PropertyGroup>
+    <ProductShortName>Dotnet10Template</ProductShortName>
     <ProductDisplayName>Dotnet10Template Desktop</ProductDisplayName>
+    <ProductRootNamespace>Dotnet10Template</ProductRootNamespace>
+    <ProductDataFolderName>Dotnet10Template</ProductDataFolderName>
+    <ProductEnvPrefix>DOTNET10TEMPLATE</ProductEnvPrefix>
+
+    <ProductVersion>1.0.0</ProductVersion>
+    <ProductPackageVersion>1.0.0.0</ProductPackageVersion>
     <ProductPackageIdentityName>Dotnet10Template.Desktop</ProductPackageIdentityName>
     <ProductPublisher>CN=Dotnet10TemplateDevelopment</ProductPublisher>
     <ProductPublisherDisplayName>Dotnet10Template Development</ProductPublisherDisplayName>
-    <ProductVersion>1.0.0</ProductVersion>
-    <ProductPackageVersion>1.0.0.0</ProductPackageVersion>
+    <ProductPhoneProductId>90de26b1-99bf-40a0-a4f6-7460aa9166d8</ProductPhoneProductId>
+    <ProductPhonePublisherId>4c9cbdf7-4581-4e2c-bf15-740a149556ef</ProductPhonePublisherId>
+
     <DesktopExecutableName>Dotnet10Template.Desktop</DesktopExecutableName>
     <ApiExecutableName>Dotnet10Template.Api</ApiExecutableName>
+
+    <PostgresDatabaseName>dotnet10template</PostgresDatabaseName>
+    <DockerNamePrefix>dotnet10template</DockerNamePrefix>
+    <WebPackageName>dotnet10template.web</WebPackageName>
   </PropertyGroup>
 </Project>

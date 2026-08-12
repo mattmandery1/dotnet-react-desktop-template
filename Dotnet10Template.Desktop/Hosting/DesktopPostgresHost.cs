@@ -15,10 +15,10 @@ namespace Dotnet10Template.Desktop.Hosting;
 internal sealed class DesktopPostgresHost : IAsyncDisposable
 {
     private const string RuntimeRelativePath = "Runtime\\Postgres";
-    private const string PortEnvironmentVariable = "DOTNET10TEMPLATE_DESKTOP_POSTGRES_PORT";
+    private static readonly string PortEnvironmentVariable =
+        ProductIdentity.GetEnvironmentVariableName("DESKTOP_POSTGRES_PORT");
     private const string Host = "127.0.0.1";
     private const string User = "postgres";
-    private const string Database = "dotnet10template";
     private const int StartupRetryCount = 5;
 
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(30);
@@ -68,7 +68,7 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         {
             port = configuredPort ?? SelectAvailableLoopbackPort();
             EnsureResolvedPort(port);
-            endpoint = new DesktopPostgresEndpoint(Host, port, Database, User);
+            endpoint = new DesktopPostgresEndpoint(Host, port, ProductIdentity.PostgresDatabaseName, User);
 
             AppendPostgresLog($"Resolved desktop PostgreSQL port: {port}.");
             AppendPostgresLog($"Selected desktop PostgreSQL endpoint: {Endpoint.Host}:{Endpoint.Port}.");
@@ -194,7 +194,7 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
                 "-d",
                 "postgres",
                 "-tAc",
-                $"SELECT 1 FROM pg_database WHERE datname = '{Database}';"
+                $"SELECT 1 FROM pg_database WHERE datname = '{ProductIdentity.PostgresDatabaseName}';"
             ],
             cancellationToken);
 
@@ -220,14 +220,14 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
                 port.ToString(CultureInfo.InvariantCulture),
                 "-U",
                 User,
-                Database
+                ProductIdentity.PostgresDatabaseName
             ],
             cancellationToken);
 
         if (createResult.ExitCode != 0)
         {
             throw new InvalidOperationException(
-                $"Unable to create the desktop PostgreSQL database '{Database}'. {createResult.GetMessage()}");
+                $"Unable to create the desktop PostgreSQL database '{ProductIdentity.PostgresDatabaseName}'. {createResult.GetMessage()}");
         }
     }
 
@@ -625,7 +625,7 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
 
             if (!string.IsNullOrWhiteSpace(packagedLocalFolder))
             {
-                return Path.GetFullPath(Path.Combine(packagedLocalFolder, "Dotnet10Template"));
+                return Path.GetFullPath(Path.Combine(packagedLocalFolder, ProductIdentity.DataFolderName));
             }
         }
         catch (Exception)
@@ -642,7 +642,7 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
                 "Local");
         }
 
-        return Path.Combine(localAppData, "Dotnet10Template");
+        return Path.Combine(localAppData, ProductIdentity.DataFolderName);
     }
 
     private static string FormatLogArgument(string argument)

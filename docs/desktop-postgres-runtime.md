@@ -36,7 +36,7 @@ The desktop project copies `Runtime/Postgres/**` to the build, publish, and pack
 Desktop data is stored outside the app install/output folder:
 
 ```text
-<per-user app data>/Dotnet10Template/PostgresData
+<per-user app data>/<ProductDataFolderName>/PostgresData
 ```
 
 The desktop app initializes this directory with `initdb` on first launch and reuses it on later launches.
@@ -44,13 +44,13 @@ The desktop app initializes this directory with `initdb` on first launch and reu
 In packaged runs, `<per-user app data>` is the package LocalState path returned by Windows App SDK. In ordinary unpackaged development runs, the fallback is:
 
 ```text
-%LOCALAPPDATA%/Dotnet10Template
+%LOCALAPPDATA%/<ProductDataFolderName>
 ```
 
 The writable packaged PostgreSQL runtime copy is stored beside the data folder:
 
 ```text
-<per-user app data>/Dotnet10Template/PostgresRuntime
+<per-user app data>/<ProductDataFolderName>/PostgresRuntime
 ```
 
 ## Local binding and port
@@ -70,7 +70,7 @@ The default desktop PostgreSQL port is:
 Override it for local development with:
 
 ```powershell
-$env:DOTNET10TEMPLATE_DESKTOP_POSTGRES_PORT = "55433"
+$env:<ProductEnvPrefix>_DESKTOP_POSTGRES_PORT = "55433"
 ```
 
 If the selected port is already occupied, the desktop app fails with a visible startup error. It does not stop or kill unrelated PostgreSQL processes.

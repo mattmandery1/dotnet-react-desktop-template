@@ -4,6 +4,12 @@ using Dotnet10Template.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("DefaultConnection")))
+{
+    builder.Configuration["ConnectionStrings:DefaultConnection"] =
+        $"Host=localhost;Port=5432;Database={ProductIdentity.PostgresDatabaseName};Username=postgres;Password=postgres";
+}
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

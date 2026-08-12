@@ -1,4 +1,5 @@
-﻿using DotNet.Testcontainers.Builders;
+using System.Reflection;
+using DotNet.Testcontainers.Builders;
 using Dotnet10Template.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -11,9 +12,12 @@ namespace Dotnet10Template.IntegrationTests;
 
 public sealed class HelloEndpointTests : IAsyncLifetime
 {
+    private static readonly string TestDatabaseName =
+        $"{GetProductMetadata("PostgresDatabaseName", "dotnet10template")}_tests";
+
     private readonly PostgreSqlContainer _postgresContainer =
         new PostgreSqlBuilder("postgres:17")
-            .WithDatabase("dotnet10template_tests")
+            .WithDatabase(TestDatabaseName)
             .WithUsername("postgres")
             .WithPassword("postgres")
             .Build();
@@ -60,5 +64,17 @@ public sealed class HelloEndpointTests : IAsyncLifetime
         Assert.Equal(
             "Hello World, the names are Matt, Tony, Bob",
             content);
+    }
+
+    private static string GetProductMetadata(string key, string fallback)
+    {
+        var value = Assembly.GetExecutingAssembly()
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == key)
+            ?.Value;
+
+        return string.IsNullOrWhiteSpace(value)
+            ? fallback
+            : value;
     }
 }

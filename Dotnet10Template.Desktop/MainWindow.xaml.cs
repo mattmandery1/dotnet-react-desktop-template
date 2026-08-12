@@ -31,6 +31,8 @@ namespace Dotnet10Template.Desktop
         public MainWindow()
         {
             InitializeComponent();
+            Title = ProductIdentity.ShortName;
+            StartupErrorTitle.Text = $"{ProductIdentity.ShortName} could not start";
             DesktopHostLog.Append("MainWindow initialized.");
             AppWebView.Loaded += AppWebView_Loaded;
             AppWindow.Closing += AppWindow_Closing;

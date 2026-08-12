@@ -4,7 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>fd1a9ac8-c137-422d-b035-d1bbc7092b47</UserSecretsId>
+    <!-- TEMPLATE-INIT: regenerate this value for every initialized clone. -->
+    <UserSecretsId>d0a04c28-f07e-422b-bbe2-3674ab093df5</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
     <Platforms>AnyCPU;x64</Platforms>

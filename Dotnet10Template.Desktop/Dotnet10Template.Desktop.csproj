@@ -19,6 +19,7 @@
     <PostgresRuntimeDir>$(MSBuildProjectDirectory)\Runtime\Postgres\</PostgresRuntimeDir>
     <DesktopApiRuntimeArgs Condition="'$(RuntimeIdentifier)' != ''">--runtime &quot;$(RuntimeIdentifier)&quot; --self-contained true</DesktopApiRuntimeArgs>
     <DesktopApiRuntimeArgs Condition="'$(RuntimeIdentifier)' == ''">--no-self-contained</DesktopApiRuntimeArgs>
+    <DesktopWebProductEnv>set VITE_PRODUCT_DISPLAY_NAME=$(ProductDisplayName)&amp;&amp; set VITE_PRODUCT_SHORT_NAME=$(ProductShortName)&amp;&amp;</DesktopWebProductEnv>
   </PropertyGroup>
 
   <ItemGroup>
@@ -80,6 +81,46 @@
     </ItemGroup>
   </Target>
 
+  <Target Name="StampPackageManifestProductIdentity"
+          BeforeTargets="Build;_GenerateAppxPackageFile">
+    <XmlPoke XmlInputPath="Package.appxmanifest"
+             Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='mp' Uri='http://schemas.microsoft.com/appx/2014/phone/manifest' /&gt;&lt;Namespace Prefix='uap' Uri='http://schemas.microsoft.com/appx/manifest/uap/windows10' /&gt;"
+             Query="/pkg:Package/pkg:Identity/@Name"
+             Value="$(ProductPackageIdentityName)" />
+    <XmlPoke XmlInputPath="Package.appxmanifest"
+             Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;"
+             Query="/pkg:Package/pkg:Identity/@Publisher"
+             Value="$(ProductPublisher)" />
+    <XmlPoke XmlInputPath="Package.appxmanifest"
+             Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;"
+             Query="/pkg:Package/pkg:Identity/@Version"
+             Value="$(ProductPackageVersion)" />
+    <XmlPoke XmlInputPath="Package.appxmanifest"
+             Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='mp' Uri='http://schemas.microsoft.com/appx/2014/phone/manifest' /&gt;"
+             Query="/pkg:Package/mp:PhoneIdentity/@PhoneProductId"
+             Value="$(ProductPhoneProductId)" />
+    <XmlPoke XmlInputPath="Package.appxmanifest"
+             Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='mp' Uri='http://schemas.microsoft.com/appx/2014/phone/manifest' /&gt;"
+             Query="/pkg:Package/mp:PhoneIdentity/@PhonePublisherId"
+             Value="$(ProductPhonePublisherId)" />
+    <XmlPoke XmlInputPath="Package.appxmanifest"
+             Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;"
+             Query="/pkg:Package/pkg:Properties/pkg:DisplayName"
+             Value="$(ProductDisplayName)" />
+    <XmlPoke XmlInputPath="Package.appxmanifest"
+             Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;"
+             Query="/pkg:Package/pkg:Properties/pkg:PublisherDisplayName"
+             Value="$(ProductPublisherDisplayName)" />
+    <XmlPoke XmlInputPath="Package.appxmanifest"
+             Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='uap' Uri='http://schemas.microsoft.com/appx/manifest/uap/windows10' /&gt;"
+             Query="/pkg:Package/pkg:Applications/pkg:Application/uap:VisualElements/@DisplayName"
+             Value="$(ProductDisplayName)" />
+    <XmlPoke XmlInputPath="Package.appxmanifest"
+             Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='uap' Uri='http://schemas.microsoft.com/appx/manifest/uap/windows10' /&gt;"
+             Query="/pkg:Package/pkg:Applications/pkg:Application/uap:VisualElements/@Description"
+             Value="$(ProductDisplayName)" />
+  </Target>
+
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
     Explorer "Package and Publish" context menu entry to be enabled for this project even if
@@ -119,7 +160,7 @@
           DependsOnTargets="RestoreDesktopWebPackages"
           Inputs="@(DesktopWebBuildInput)"
           Outputs="$(WebProjectDir)dist\index.html">
-    <Exec Command="npm run build" WorkingDirectory="$(WebProjectDir)" />
+    <Exec Command="$(DesktopWebProductEnv) npm run build" WorkingDirectory="$(WebProjectDir)" />
   </Target>
 
   <Target Name="CopyDesktopWebAssets"

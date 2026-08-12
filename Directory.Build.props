@@ -7,4 +7,27 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ProductShortName</_Parameter1>
+      <_Parameter2>$(ProductShortName)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ProductDisplayName</_Parameter1>
+      <_Parameter2>$(ProductDisplayName)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ProductDataFolderName</_Parameter1>
+      <_Parameter2>$(ProductDataFolderName)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ProductEnvPrefix</_Parameter1>
+      <_Parameter2>$(ProductEnvPrefix)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>PostgresDatabaseName</_Parameter1>
+      <_Parameter2>$(PostgresDatabaseName)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>

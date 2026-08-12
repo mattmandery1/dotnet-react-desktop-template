@@ -12,6 +12,9 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["Directory.Build.props", "./"]
+COPY ["Directory.Product.props", "./"]
+COPY ["Directory.Packages.props", "./"]
 COPY ["src/Dotnet10Template.Api/Dotnet10Template.Api.csproj", "src/Dotnet10Template.Api/"]
 COPY ["src/Dotnet10Template.Application/Dotnet10Template.Application.csproj", "src/Dotnet10Template.Application/"]
 COPY ["src/Dotnet10Template.Domain/Dotnet10Template.Domain.csproj", "src/Dotnet10Template.Domain/"]
@@ -25,9 +28,10 @@ RUN dotnet build "./Dotnet10Template.Api.csproj" -c $BUILD_CONFIGURATION -o /app
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./Dotnet10Template.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet msbuild "./Dotnet10Template.Api.csproj" -nologo -getProperty:ApiExecutableName > /app/publish/api-executable-name
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Dotnet10Template.Api.dll"]
+ENTRYPOINT ["sh", "-c", "dotnet \"$(cat /app/api-executable-name).dll\""]

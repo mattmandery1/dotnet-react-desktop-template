@@ -32,7 +32,7 @@ The desktop package script reads this file for:
 - desktop executable name
 - API executable name
 
-`Dotnet10Template.Desktop/Package.appxmanifest` must stay aligned with those values. The script validates the manifest identity metadata before packaging.
+`Dotnet10Template.Desktop/Package.appxmanifest` is stamped from those values during build and by `scripts/package-desktop.ps1` before packaging.
 
 Metadata relationships:
 
@@ -144,25 +144,25 @@ Get-AppxPackage Dotnet10Template.Desktop | Remove-AppxPackage
 The desktop app stores PostgreSQL data outside the app install folder. At runtime it asks Windows App SDK for the packaged per-user local app data path and appends:
 
 ```text
-Dotnet10Template\PostgresData
+<ProductDataFolderName>\PostgresData
 ```
 
 The exact resolved path is written to the desktop host log on startup. In packaged runs this is under the app package's per-user local data area. The ordinary unpackaged fallback is:
 
 ```text
-%LOCALAPPDATA%\Dotnet10Template\PostgresData
+%LOCALAPPDATA%\<ProductDataFolderName>\PostgresData
 ```
 
 The PostgreSQL log is stored beside the data folder as:
 
 ```text
-Dotnet10Template\postgres.log
+<ProductDataFolderName>\postgres.log
 ```
 
 The packaged app also copies the bundled private PostgreSQL runtime to:
 
 ```text
-Dotnet10Template\PostgresRuntime
+<ProductDataFolderName>\PostgresRuntime
 ```
 
 PostgreSQL is executed from that per-user runtime copy. The package still remains the source for the private PostgreSQL binaries; `postgres.exe` is not renamed and no external PostgreSQL installation is used.

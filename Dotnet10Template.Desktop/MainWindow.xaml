@@ -5,8 +5,7 @@
     xmlns:local="using:Dotnet10Template.Desktop"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
-    Title="Dotnet10Template">
+    mc:Ignorable="d">
 
     <Grid>
         <WebView2 x:Name="AppWebView" />
@@ -21,9 +20,9 @@
                 VerticalAlignment="Center"
                 Spacing="12">
                 <TextBlock
+                    x:Name="StartupErrorTitle"
                     FontSize="22"
-                    FontWeight="SemiBold"
-                    Text="Dotnet10Template could not start" />
+                    FontWeight="SemiBold" />
                 <TextBlock
                     x:Name="StartupErrorMessage"
                     TextWrapping="WrapWholeWords" />

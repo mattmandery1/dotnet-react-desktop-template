@@ -14,9 +14,9 @@ namespace Dotnet10Template.Desktop.Hosting;
 internal sealed class DesktopApiHost : IAsyncDisposable
 {
     private const string Host = "127.0.0.1";
-    private const string PortEnvironmentVariable = "DOTNET10TEMPLATE_DESKTOP_API_PORT";
+    private static readonly string PortEnvironmentVariable =
+        ProductIdentity.GetEnvironmentVariableName("DESKTOP_API_PORT");
     private const int StartupRetryCount = 5;
-    private const string DefaultApiExecutableName = "Dotnet10Template.Api";
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ReadinessPollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5);
@@ -284,11 +284,7 @@ internal sealed class DesktopApiHost : IAsyncDisposable
 
     private static string GetApiExecutableName()
     {
-        return Assembly.GetExecutingAssembly()
-            .GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(attribute => attribute.Key == "DesktopApiExecutableName")
-            ?.Value
-            ?? DefaultApiExecutableName;
+        return ProductIdentity.ApiExecutableName;
     }
 
     private static int? ResolveConfiguredPort()

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 
 function App() {
+    const productShortName = import.meta.env.VITE_PRODUCT_SHORT_NAME
     const [message, setMessage] = useState('Loading...')
     const [error, setError] = useState<string | null>(null)
 
@@ -29,7 +30,7 @@ function App() {
 
     return (
         <main>
-            <h1>Dotnet10Template</h1>
+            <h1>{productShortName}</h1>
 
             {error ? (
                 <p>{error}</p>

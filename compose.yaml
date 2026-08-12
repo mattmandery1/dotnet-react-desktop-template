@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:17
-    container_name: dotnet10template-postgres
+    container_name: ${DOCKER_NAME_PREFIX}-postgres
 
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -25,7 +25,7 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
 
-    container_name: dotnet10template-api
+    container_name: ${DOCKER_NAME_PREFIX}-api
 
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -44,7 +44,7 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
 
-    container_name: dotnet10template-web
+    container_name: ${DOCKER_NAME_PREFIX}-web
 
     ports:
       - "${WEB_PORT}:80"

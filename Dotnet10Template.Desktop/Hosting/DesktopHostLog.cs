@@ -42,7 +42,7 @@ internal static class DesktopHostLog
 
             if (!string.IsNullOrWhiteSpace(packagedLocalFolder))
             {
-                return Path.GetFullPath(Path.Combine(packagedLocalFolder, "Dotnet10Template"));
+                return Path.GetFullPath(Path.Combine(packagedLocalFolder, ProductIdentity.DataFolderName));
             }
         }
         catch (Exception)
@@ -59,6 +59,6 @@ internal static class DesktopHostLog
                 "Local");
         }
 
-        return Path.GetFullPath(Path.Combine(localAppData, "Dotnet10Template"));
+        return Path.GetFullPath(Path.Combine(localAppData, ProductIdentity.DataFolderName));
     }
 }
