@@ -6,8 +6,8 @@
     <ProductDataFolderName>Dotnet10Template</ProductDataFolderName>
     <ProductEnvPrefix>DOTNET10TEMPLATE</ProductEnvPrefix>
 
-    <ProductVersion>1.0.0</ProductVersion>
-    <ProductPackageVersion>1.0.0.0</ProductPackageVersion>
+    <ProductVersion>1.0.1</ProductVersion>
+    <ProductPackageVersion>1.0.1.0</ProductPackageVersion>
     <ProductPackageIdentityName>Dotnet10Template.Desktop</ProductPackageIdentityName>
     <ProductPublisher>CN=Dotnet10TemplateDevelopment</ProductPublisher>
     <ProductPublisherDisplayName>Dotnet10Template Development</ProductPublisherDisplayName>

@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10" IgnorableNamespaces="uap rescap systemai">
-  <Identity Name="Dotnet10Template.Desktop" Publisher="CN=Dotnet10TemplateDevelopment" Version="1.0.0.0" />
+  <Identity Name="Dotnet10Template.Desktop" Publisher="CN=Dotnet10TemplateDevelopment" Version="1.0.1.0" />
   <mp:PhoneIdentity PhoneProductId="90de26b1-99bf-40a0-a4f6-7460aa9166d8" PhonePublisherId="4c9cbdf7-4581-4e2c-bf15-740a149556ef" />
   <Properties>
     <DisplayName>Dotnet10Template Desktop</DisplayName>
