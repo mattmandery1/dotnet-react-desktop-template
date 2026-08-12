@@ -1,30 +1,54 @@
+# Keep Docker contexts rooted at the repository while excluding local state and
+# generated output that is not needed by the API or web image builds.
+
+# Git/editor/local state
+.git
+.gitignore
+.gitattributes
+.github
+.vs
+.vscode
 **/.classpath
-**/.dockerignore
-**/.env
-**/.git
-**/.gitignore
 **/.project
 **/.settings
 **/.toolstarget
-**/.vs
-**/.vscode
 **/*.*proj.user
 **/*.dbmdl
 **/*.jfm
 **/azds.yaml
-**/bin
-**/charts
-**/docker-compose*
-**/Dockerfile*
-**/node_modules
-**/npm-debug.log
-**/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
+**/npm-debug.log
+
+# Local environment and certificates
+.env
+.env.*
+.certificates
+
+# Build/package outputs
+artifacts
+**/artifacts
+**/bin
+**/obj
+**/dist
+**/node_modules
+**/AppPackages
+**/BundleArtifacts
+AppPackages
+
+# Desktop-only runtime/package payloads; excluded from Docker context only.
+Dotnet10Template.Desktop
+
+# Tests are run from the host and are not required for API/web image builds.
+tests
+
+# Repo documentation and non-build metadata
+docs
 LICENSE
 README.md
-!**/.gitignore
-!.git/HEAD
-!.git/config
-!.git/packed-refs
-!.git/refs/heads/**
+
+# Compose files are used by the CLI before context upload, not by image builds.
+compose*.yaml
+compose*.yml
+docker-compose*.yaml
+docker-compose*.yml
