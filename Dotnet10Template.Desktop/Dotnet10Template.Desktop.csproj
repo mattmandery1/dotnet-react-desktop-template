@@ -16,9 +16,12 @@
     <Nullable>enable</Nullable>
     <WebProjectDir>$(MSBuildProjectDirectory)\..\src\dotnet10template.web\</WebProjectDir>
     <ApiProjectPath>$(MSBuildProjectDirectory)\..\src\Dotnet10Template.Api\Dotnet10Template.Api.csproj</ApiProjectPath>
+    <RuntimeHostProjectPath>$(MSBuildProjectDirectory)\..\src\Dotnet10Template.RuntimeHost\Dotnet10Template.RuntimeHost.csproj</RuntimeHostProjectPath>
     <PostgresRuntimeDir>$(MSBuildProjectDirectory)\Runtime\Postgres\</PostgresRuntimeDir>
     <DesktopApiRuntimeArgs Condition="'$(RuntimeIdentifier)' != ''">--runtime &quot;$(RuntimeIdentifier)&quot; --self-contained true</DesktopApiRuntimeArgs>
     <DesktopApiRuntimeArgs Condition="'$(RuntimeIdentifier)' == ''">--no-self-contained</DesktopApiRuntimeArgs>
+    <DesktopRuntimeHostRuntimeArgs Condition="'$(RuntimeIdentifier)' != ''">--runtime &quot;$(RuntimeIdentifier)&quot; --self-contained true</DesktopRuntimeHostRuntimeArgs>
+    <DesktopRuntimeHostRuntimeArgs Condition="'$(RuntimeIdentifier)' == ''">--no-self-contained</DesktopRuntimeHostRuntimeArgs>
     <DesktopWebProductEnv>set VITE_PRODUCT_DISPLAY_NAME=$(ProductDisplayName)&amp;&amp; set VITE_PRODUCT_SHORT_NAME=$(ProductShortName)&amp;&amp;</DesktopWebProductEnv>
   </PropertyGroup>
 
@@ -54,6 +57,10 @@
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>DesktopApiPublishPath</_Parameter1>
       <_Parameter2>$(OutDir)Api</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>DesktopRuntimeHostPublishPath</_Parameter1>
+      <_Parameter2>$(OutDir)RuntimeHost</_Parameter2>
     </AssemblyAttribute>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>DesktopApiExecutableName</_Parameter1>
@@ -179,6 +186,17 @@
           DestinationFiles="@(DesktopWebAsset->'$(OutDir)AppX\WebAssets\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
+  <Target Name="CopyDesktopHostFilesToAppx"
+          Condition="'$(DesignTimeBuild)' != 'true'"
+          AfterTargets="Build">
+    <ItemGroup>
+      <DesktopHostOutput Include="$(OutDir)*.*" />
+    </ItemGroup>
+    <MakeDir Directories="$(OutDir)AppX" />
+    <Copy SourceFiles="@(DesktopHostOutput)"
+          DestinationFiles="@(DesktopHostOutput->'$(OutDir)AppX\%(Filename)%(Extension)')" />
+  </Target>
+
   <Target Name="PublishDesktopApi"
           Condition="'$(DesignTimeBuild)' != 'true'"
           AfterTargets="Build">
@@ -193,17 +211,35 @@
           DestinationFiles="@(DesktopApiAsset->'$(OutDir)AppX\Api\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
+  <Target Name="PublishDesktopRuntimeHost"
+          Condition="'$(DesignTimeBuild)' != 'true'"
+          AfterTargets="Build">
+    <RemoveDir Directories="$(OutDir)RuntimeHost" />
+    <Exec Command="dotnet publish &quot;$(RuntimeHostProjectPath)&quot; --nologo --configuration &quot;$(Configuration)&quot; $(DesktopRuntimeHostRuntimeArgs) --output &quot;$(OutDir)RuntimeHost&quot; -p:UseAppHost=true -p:PublishSingleFile=false" />
+    <ItemGroup>
+      <DesktopRuntimeHostAsset Include="$(OutDir)RuntimeHost\**\*.*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(OutDir)AppX\RuntimeHost" />
+    <MakeDir Directories="$(OutDir)AppX\RuntimeHost" />
+    <Copy SourceFiles="@(DesktopRuntimeHostAsset)"
+          DestinationFiles="@(DesktopRuntimeHostAsset->'$(OutDir)AppX\RuntimeHost\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
   <Target Name="IncludeDesktopOwnedRuntimePayload"
           BeforeTargets="_GenerateAppxPackageFile"
-          DependsOnTargets="CopyDesktopWebAssets;PublishDesktopApi">
+          DependsOnTargets="CopyDesktopWebAssets;PublishDesktopApi;PublishDesktopRuntimeHost">
     <ItemGroup>
       <DesktopPackagedWebAsset Include="$(OutDir)WebAssets\**\*.*" />
       <DesktopPackagedApiAsset Include="$(OutDir)Api\**\*.*" />
+      <DesktopPackagedRuntimeHostAsset Include="$(OutDir)RuntimeHost\**\*.*" />
       <AppxPackagePayload Include="@(DesktopPackagedWebAsset)">
         <TargetPath>WebAssets\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
       </AppxPackagePayload>
       <AppxPackagePayload Include="@(DesktopPackagedApiAsset)">
         <TargetPath>Api\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+      </AppxPackagePayload>
+      <AppxPackagePayload Include="@(DesktopPackagedRuntimeHostAsset)">
+        <TargetPath>RuntimeHost\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
       </AppxPackagePayload>
     </ItemGroup>
   </Target>

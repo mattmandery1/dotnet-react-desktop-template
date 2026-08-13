@@ -2,13 +2,11 @@ using System;
 using System.Linq;
 using System.Reflection;
 
-namespace Dotnet10Template.Desktop.Hosting;
+namespace Dotnet10Template.RuntimeHost;
 
 internal static class ProductIdentity
 {
     public static string ShortName { get; } = GetMetadata("ProductShortName", "Dotnet10Template");
-
-    public static string DisplayName { get; } = GetMetadata("ProductDisplayName", "Dotnet10Template Desktop");
 
     public static string DataFolderName { get; } = GetMetadata("ProductDataFolderName", "Dotnet10Template");
 
@@ -16,7 +14,7 @@ internal static class ProductIdentity
 
     public static string PostgresDatabaseName { get; } = GetMetadata("PostgresDatabaseName", "dotnet10template");
 
-    public static string ApiExecutableName { get; } = GetMetadata("DesktopApiExecutableName", "Dotnet10Template.Api");
+    public static string ApiExecutableName { get; } = GetMetadata("ApiExecutableName", "Dotnet10Template.Api");
 
     public static string RuntimeHostExecutableName { get; } =
         GetMetadata("RuntimeHostExecutableName", "Dotnet10Template.RuntimeHost");

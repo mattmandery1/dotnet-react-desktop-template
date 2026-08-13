@@ -26,6 +26,7 @@ param(
     [string]$ProductPackageVersion,
     [string]$ProductPackageIdentityName,
     [string]$DesktopExecutableName,
+    [string]$RuntimeHostExecutableName,
     [string]$ApiExecutableName,
     [string]$PostgresDatabaseName,
     [string]$DockerNamePrefix,
@@ -412,6 +413,7 @@ function Test-PackageDesktopMetadata {
         "$ProductRootNamespace.Desktop\Package.appxmanifest",
         "$ProductRootNamespace.Desktop\$ProductRootNamespace.Desktop.csproj",
         "src\$ProductRootNamespace.Api\$ProductRootNamespace.Api.csproj",
+        "src\$ProductRootNamespace.RuntimeHost\$ProductRootNamespace.RuntimeHost.csproj",
         "src\$WebPackageName"
     )) {
         if (-not $scriptText.Contains($expected)) {
@@ -479,6 +481,9 @@ try {
     if ([string]::IsNullOrWhiteSpace($DesktopExecutableName)) {
         $DesktopExecutableName = "$ProductRootNamespace.Desktop"
     }
+    if ([string]::IsNullOrWhiteSpace($RuntimeHostExecutableName)) {
+        $RuntimeHostExecutableName = "$ProductRootNamespace.RuntimeHost"
+    }
     if ([string]::IsNullOrWhiteSpace($ApiExecutableName)) {
         $ApiExecutableName = "$ProductRootNamespace.Api"
     }
@@ -497,6 +502,7 @@ try {
         ProductEnvPrefix = $ProductEnvPrefix
         ProductPackageIdentityName = $ProductPackageIdentityName
         DesktopExecutableName = $DesktopExecutableName
+        RuntimeHostExecutableName = $RuntimeHostExecutableName
         ApiExecutableName = $ApiExecutableName
         DockerNamePrefix = $DockerNamePrefix
         WebPackageName = $WebPackageName
@@ -517,6 +523,7 @@ try {
     $productPropsPath = Join-Path $repoRoot "Directory.Product.props"
     $solutionPath = Join-Path $repoRoot "$TemplatePascalName.slnx"
     $apiProjectPath = Join-Path $repoRoot "src/$TemplatePascalName.Api/$TemplatePascalName.Api.csproj"
+    $runtimeHostProjectPath = Join-Path $repoRoot "src/$TemplatePascalName.RuntimeHost/$TemplatePascalName.RuntimeHost.csproj"
     if (-not (Test-Path -LiteralPath $productPropsPath)) {
         throw "Directory.Product.props was not found. Run this script from a clone of the template repository."
     }
@@ -525,7 +532,8 @@ try {
     $existingShortName = Get-RequiredProperty $existingProductProps "ProductShortName"
     if (($existingShortName -ne $TemplatePascalName) -or
         (-not (Test-Path -LiteralPath $solutionPath)) -or
-        (-not (Test-Path -LiteralPath $apiProjectPath))) {
+        (-not (Test-Path -LiteralPath $apiProjectPath)) -or
+        (-not (Test-Path -LiteralPath $runtimeHostProjectPath))) {
         throw "This repository does not look like a fresh Dotnet10Template clone. Use a fresh clone or restore your checkout before running template initialization."
     }
 
@@ -548,6 +556,7 @@ try {
         ProductPhoneProductId = $phoneProductId
         ProductPhonePublisherId = $phonePublisherId
         DesktopExecutableName = $DesktopExecutableName
+        RuntimeHostExecutableName = $RuntimeHostExecutableName
         ApiExecutableName = $ApiExecutableName
         PostgresDatabaseName = $PostgresDatabaseName
         DockerNamePrefix = $DockerNamePrefix
@@ -574,6 +583,7 @@ try {
         [pscustomobject]@{ From = "$TemplatePascalName.UnitTests"; To = "$ProductRootNamespace.UnitTests" }
         [pscustomobject]@{ From = "$TemplatePascalName.Infrastructure"; To = "$ProductRootNamespace.Infrastructure" }
         [pscustomobject]@{ From = "$TemplatePascalName.Application"; To = "$ProductRootNamespace.Application" }
+        [pscustomobject]@{ From = "$TemplatePascalName.RuntimeHost"; To = "$ProductRootNamespace.RuntimeHost" }
         [pscustomobject]@{ From = "$TemplatePascalName.Desktop"; To = "$ProductRootNamespace.Desktop" }
         [pscustomobject]@{ From = "$TemplatePascalName.Domain"; To = "$ProductRootNamespace.Domain" }
         [pscustomobject]@{ From = $TemplatePascalName; To = $ProductRootNamespace }
@@ -601,6 +611,7 @@ try {
         @("src/$TemplatePascalName.Application", "src/$ProductRootNamespace.Application"),
         @("src/$TemplatePascalName.Domain", "src/$ProductRootNamespace.Domain"),
         @("src/$TemplatePascalName.Infrastructure", "src/$ProductRootNamespace.Infrastructure"),
+        @("src/$TemplatePascalName.RuntimeHost", "src/$ProductRootNamespace.RuntimeHost"),
         @("tests/$TemplatePascalName.UnitTests", "tests/$ProductRootNamespace.UnitTests"),
         @("tests/$TemplatePascalName.IntegrationTests", "tests/$ProductRootNamespace.IntegrationTests"),
         @("src/$TemplateLowerName.web", "src/$WebPackageName"),
@@ -617,6 +628,7 @@ try {
         @("src/$ProductRootNamespace.Application/$TemplatePascalName.Application.csproj", "src/$ProductRootNamespace.Application/$ProductRootNamespace.Application.csproj"),
         @("src/$ProductRootNamespace.Domain/$TemplatePascalName.Domain.csproj", "src/$ProductRootNamespace.Domain/$ProductRootNamespace.Domain.csproj"),
         @("src/$ProductRootNamespace.Infrastructure/$TemplatePascalName.Infrastructure.csproj", "src/$ProductRootNamespace.Infrastructure/$ProductRootNamespace.Infrastructure.csproj"),
+        @("src/$ProductRootNamespace.RuntimeHost/$TemplatePascalName.RuntimeHost.csproj", "src/$ProductRootNamespace.RuntimeHost/$ProductRootNamespace.RuntimeHost.csproj"),
         @("tests/$ProductRootNamespace.UnitTests/$TemplatePascalName.UnitTests.csproj", "tests/$ProductRootNamespace.UnitTests/$ProductRootNamespace.UnitTests.csproj"),
         @("tests/$ProductRootNamespace.IntegrationTests/$TemplatePascalName.IntegrationTests.csproj", "tests/$ProductRootNamespace.IntegrationTests/$ProductRootNamespace.IntegrationTests.csproj"),
         @("$ProductRootNamespace.Desktop/$TemplatePascalName.Desktop.csproj", "$ProductRootNamespace.Desktop/$ProductRootNamespace.Desktop.csproj"),

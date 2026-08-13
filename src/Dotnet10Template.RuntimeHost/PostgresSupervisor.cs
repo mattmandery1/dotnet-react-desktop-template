@@ -8,11 +8,10 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using WinAppApplicationData = Microsoft.Windows.Storage.ApplicationData;
 
-namespace Dotnet10Template.Desktop.Hosting;
+namespace Dotnet10Template.RuntimeHost;
 
-internal sealed class DesktopPostgresHost : IAsyncDisposable
+internal sealed class PostgresSupervisor : IAsyncDisposable
 {
     private const string RuntimeRelativePath = "Runtime\\Postgres";
     private static readonly string PortEnvironmentVariable =
@@ -24,34 +23,55 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ReadinessPollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(10);
-    private static readonly object LogSync = new();
 
     private readonly string runtimeDirectory;
     private readonly string binDirectory;
     private readonly string applicationDataDirectory;
     private readonly string dataDirectory;
     private readonly string logFilePath;
+    private readonly RuntimeHostLog log;
+    private readonly WindowsJobObject jobObject;
     private int port;
-    private DesktopPostgresEndpoint? endpoint;
+    private RuntimeEndpoint? endpoint;
     private Process? process;
     private bool disposed;
 
-    public DesktopPostgresHost()
+    public PostgresSupervisor(
+        string applicationDataDirectory,
+        RuntimeHostLog log,
+        WindowsJobObject jobObject)
     {
-        applicationDataDirectory = GetApplicationDataDirectory();
+        this.applicationDataDirectory = applicationDataDirectory;
+        this.log = log;
+        this.jobObject = jobObject;
         runtimeDirectory = PrepareWritableRuntimeDirectory(ResolveRuntimeDirectory(), applicationDataDirectory);
         binDirectory = Path.Combine(runtimeDirectory, "bin");
         dataDirectory = Path.GetFullPath(Path.Combine(applicationDataDirectory, "PostgresData"));
         logFilePath = Path.GetFullPath(Path.Combine(applicationDataDirectory, "postgres.log"));
 
-        AppendPostgresLog("DesktopPostgresHost created.");
+        AppendPostgresLog("PostgresSupervisor created.");
         AppendPostgresLog($"Application data directory: {applicationDataDirectory}");
+        if (File.Exists(Path.Combine(dataDirectory, "postmaster.pid")))
+        {
+            AppendPostgresLog("Existing postmaster.pid detected before startup; PostgreSQL may perform crash recovery.");
+        }
     }
 
-    public DesktopPostgresEndpoint Endpoint =>
-        endpoint ?? throw new InvalidOperationException("Desktop PostgreSQL has not selected an endpoint yet.");
+    public RuntimeEndpoint Endpoint =>
+        endpoint ?? throw new InvalidOperationException("PostgreSQL has not selected an endpoint yet.");
 
-    public async Task StartAsync(CancellationToken cancellationToken = default)
+    public int ProcessId =>
+        process?.Id ?? throw new InvalidOperationException("PostgreSQL process has not started.");
+
+    public async Task<CriticalChildExit> WaitForExitAsync(CancellationToken cancellationToken)
+    {
+        var postgresProcess = process
+            ?? throw new InvalidOperationException("PostgreSQL process has not started.");
+        await postgresProcess.WaitForExitAsync(cancellationToken);
+        return new CriticalChildExit("PostgreSQL", postgresProcess.Id, postgresProcess.ExitCode);
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         if (process is not null)
         {
@@ -68,10 +88,10 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         {
             port = configuredPort ?? SelectAvailableLoopbackPort();
             EnsureResolvedPort(port);
-            endpoint = new DesktopPostgresEndpoint(Host, port, ProductIdentity.PostgresDatabaseName, User);
+            endpoint = new RuntimeEndpoint(Host, port, ProductIdentity.PostgresDatabaseName, User);
 
-            AppendPostgresLog($"Resolved desktop PostgreSQL port: {port}.");
-            AppendPostgresLog($"Selected desktop PostgreSQL endpoint: {Endpoint.Host}:{Endpoint.Port}.");
+            AppendPostgresLog($"Resolved PostgreSQL port: {port}.");
+            AppendPostgresLog($"Selected PostgreSQL endpoint: {Endpoint.Host}:{Endpoint.Port}.");
 
             try
             {
@@ -87,155 +107,17 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
             catch (Exception ex) when (!configuredPort.HasValue && attempt < retryCount)
             {
                 AppendPostgresLog(
-                    $"Desktop PostgreSQL startup failed on {Host}:{port}; retrying with a new dynamic port. {ex.Message}");
+                    $"PostgreSQL startup failed on {Host}:{port}; retrying with a new dynamic port. {ex.Message}");
                 await StopAsync();
             }
         }
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        if (disposed)
-        {
-            return;
-        }
-
-        disposed = true;
-
-        await StopAsync();
-    }
-
-    private async Task InitializeAsync(CancellationToken cancellationToken)
-    {
-        Directory.CreateDirectory(dataDirectory);
-        AppendPostgresLog("Initializing desktop PostgreSQL data directory with initdb.");
-        AppendPostgresLog($"initdb data directory: {dataDirectory}");
-
-        var result = await RunToolAsync(
-            "initdb.exe",
-            [
-                "-D",
-                dataDirectory,
-                "-U",
-                User,
-                "-A",
-                "trust",
-                "-E",
-                "UTF8"
-            ],
-            cancellationToken);
-
-        if (result.ExitCode != 0)
-        {
-            throw new InvalidOperationException(
-                $"PostgreSQL data directory initialization failed during initdb. Data directory: {dataDirectory}. Log: {logFilePath}. {result.GetMessage()}");
-        }
-
-        if (!IsInitialized())
-        {
-            throw new InvalidOperationException(
-                $"PostgreSQL initdb completed without creating PG_VERSION. Data directory: {dataDirectory}. Log: {logFilePath}.");
-        }
-
-        AppendPostgresLog("initdb completed successfully.");
-    }
-
-    private async Task WaitUntilReadyAsync(CancellationToken cancellationToken)
-    {
-        using var timeout = new CancellationTokenSource(ReadinessTimeout);
-        using var linked =
-            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
-
-        while (!linked.IsCancellationRequested)
-        {
-            if (process is { HasExited: true })
-            {
-                throw new InvalidOperationException(
-                    $"The desktop PostgreSQL server process exited before it became ready. Exit code: {process.ExitCode}. Data directory: {dataDirectory}. Log: {logFilePath}.");
-            }
-
-            var result = await RunToolAsync(
-                "pg_isready.exe",
-                ["-h", Host, "-p", port.ToString(CultureInfo.InvariantCulture), "-d", "postgres", "-U", User],
-                linked.Token,
-                throwOnCancellation: false);
-
-            if (result.ExitCode == 0)
-            {
-                return;
-            }
-
-            try
-            {
-                await Task.Delay(ReadinessPollInterval, linked.Token);
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        throw new TimeoutException(
-            $"Desktop PostgreSQL did not accept local connections on {Host}:{port} within {ReadinessTimeout.TotalSeconds:n0} seconds. Data directory: {dataDirectory}. Log: {logFilePath}.");
-    }
-
-    private async Task EnsureApplicationDatabaseAsync(CancellationToken cancellationToken)
-    {
-        var existsResult = await RunToolAsync(
-            "psql.exe",
-            [
-                "-h",
-                Host,
-                "-p",
-                port.ToString(CultureInfo.InvariantCulture),
-                "-U",
-                User,
-                "-d",
-                "postgres",
-                "-tAc",
-                $"SELECT 1 FROM pg_database WHERE datname = '{ProductIdentity.PostgresDatabaseName}';"
-            ],
-            cancellationToken);
-
-        if (existsResult.ExitCode != 0)
-        {
-            throw new InvalidOperationException(
-                $"Unable to inspect the desktop PostgreSQL databases. {existsResult.GetMessage()}");
-        }
-
-        if (existsResult.StandardOutput
-            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Any(line => line == "1"))
-        {
-            return;
-        }
-
-        var createResult = await RunToolAsync(
-            "createdb.exe",
-            [
-                "-h",
-                Host,
-                "-p",
-                port.ToString(CultureInfo.InvariantCulture),
-                "-U",
-                User,
-                ProductIdentity.PostgresDatabaseName
-            ],
-            cancellationToken);
-
-        if (createResult.ExitCode != 0)
-        {
-            throw new InvalidOperationException(
-                $"Unable to create the desktop PostgreSQL database '{ProductIdentity.PostgresDatabaseName}'. {createResult.GetMessage()}");
-        }
-    }
-
-    private async Task StopAsync()
+    public async Task StopAsync()
     {
         if (process is null)
         {
-            AppendPostgresLog("PostgreSQL shutdown requested, but this desktop instance has no owned PostgreSQL process.");
+            AppendPostgresLog("PostgreSQL shutdown requested, but RuntimeHost has no owned PostgreSQL process.");
             return;
         }
 
@@ -262,10 +144,9 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
                     CancellationToken.None,
                     throwOnCancellation: false);
 
-                if (result.ExitCode == 0)
-                {
-                    AppendPostgresLog($"pg_ctl stop completed for owned PostgreSQL process PID {postgresProcess.Id}.");
-                }
+                AppendPostgresLog(result.ExitCode == 0
+                    ? $"pg_ctl stop completed for owned PostgreSQL process PID {postgresProcess.Id}."
+                    : $"pg_ctl stop returned exit code {result.ExitCode} for owned PostgreSQL process PID {postgresProcess.Id}.");
 
                 if (!postgresProcess.HasExited)
                 {
@@ -308,6 +189,125 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         }
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed = true;
+        await StopAsync();
+    }
+
+    private async Task InitializeAsync(CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(dataDirectory);
+        AppendPostgresLog("Initializing PostgreSQL data directory with initdb.");
+
+        var result = await RunToolAsync(
+            "initdb.exe",
+            ["-D", dataDirectory, "-U", User, "-A", "trust", "-E", "UTF8"],
+            cancellationToken);
+
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"PostgreSQL data directory initialization failed during initdb. Data directory: {dataDirectory}. Log: {logFilePath}. {result.GetMessage()}");
+        }
+
+        if (!IsInitialized())
+        {
+            throw new InvalidOperationException(
+                $"PostgreSQL initdb completed without creating PG_VERSION. Data directory: {dataDirectory}. Log: {logFilePath}.");
+        }
+
+        AppendPostgresLog("initdb completed successfully.");
+    }
+
+    private async Task WaitUntilReadyAsync(CancellationToken cancellationToken)
+    {
+        using var timeout = new CancellationTokenSource(ReadinessTimeout);
+        using var linked =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+
+        while (!linked.IsCancellationRequested)
+        {
+            if (process is { HasExited: true })
+            {
+                throw new InvalidOperationException(
+                    $"The PostgreSQL server process exited before it became ready. Exit code: {process.ExitCode}. Data directory: {dataDirectory}. Log: {logFilePath}.");
+            }
+
+            var result = await RunToolAsync(
+                "pg_isready.exe",
+                ["-h", Host, "-p", port.ToString(CultureInfo.InvariantCulture), "-d", "postgres", "-U", User],
+                linked.Token,
+                throwOnCancellation: false);
+
+            if (result.ExitCode == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await Task.Delay(ReadinessPollInterval, linked.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        throw new TimeoutException(
+            $"PostgreSQL did not accept local connections on {Host}:{port} within {ReadinessTimeout.TotalSeconds:n0} seconds. Data directory: {dataDirectory}. Log: {logFilePath}.");
+    }
+
+    private async Task EnsureApplicationDatabaseAsync(CancellationToken cancellationToken)
+    {
+        var existsResult = await RunToolAsync(
+            "psql.exe",
+            [
+                "-h",
+                Host,
+                "-p",
+                port.ToString(CultureInfo.InvariantCulture),
+                "-U",
+                User,
+                "-d",
+                "postgres",
+                "-tAc",
+                $"SELECT 1 FROM pg_database WHERE datname = '{ProductIdentity.PostgresDatabaseName}';"
+            ],
+            cancellationToken);
+
+        if (existsResult.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Unable to inspect the PostgreSQL databases. {existsResult.GetMessage()}");
+        }
+
+        if (existsResult.StandardOutput
+            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(line => line == "1"))
+        {
+            return;
+        }
+
+        var createResult = await RunToolAsync(
+            "createdb.exe",
+            ["-h", Host, "-p", port.ToString(CultureInfo.InvariantCulture), "-U", User, ProductIdentity.PostgresDatabaseName],
+            cancellationToken);
+
+        if (createResult.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Unable to create the PostgreSQL database '{ProductIdentity.PostgresDatabaseName}'. {createResult.GetMessage()}");
+        }
+    }
+
     private void CleanPartialDataDirectory()
     {
         if (!Directory.Exists(dataDirectory))
@@ -323,11 +323,10 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
     private async Task StartOnSelectedPortAsync(CancellationToken cancellationToken)
     {
         var startInfo = CreatePostgresStartInfo();
-        AppendPostgresLog("Starting desktop PostgreSQL.");
-        AppendPostgresLog($"Runtime directory: {runtimeDirectory}");
-        AppendPostgresLog($"Data directory: {dataDirectory}");
+        AppendPostgresLog("Starting PostgreSQL.");
         process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("The desktop PostgreSQL process could not be started.");
+            ?? throw new InvalidOperationException("The PostgreSQL process could not be started.");
+        jobObject.Add(process);
         AppendPostgresLog($"Started owned PostgreSQL process. PID: {process.Id}.");
         process.OutputDataReceived += (_, args) => AppendPostgresLog(args.Data);
         process.ErrorDataReceived += (_, args) => AppendPostgresLog(args.Data);
@@ -338,7 +337,7 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         {
             await WaitUntilReadyAsync(cancellationToken);
             await EnsureApplicationDatabaseAsync(cancellationToken);
-            AppendPostgresLog($"Desktop PostgreSQL ready at {Endpoint.Host}:{Endpoint.Port}.");
+            AppendPostgresLog($"PostgreSQL ready at {Endpoint.Host}:{Endpoint.Port}.");
         }
         catch
         {
@@ -381,15 +380,18 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
             return;
         }
 
-        lock (LogSync)
+        try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(logFilePath)!);
             File.AppendAllText(
                 logFilePath,
                 $"[{DateTimeOffset.Now:u}] {line}{Environment.NewLine}");
         }
+        catch
+        {
+        }
 
-        DesktopHostLog.Append($"PostgreSQL: {line}");
+        log.Append($"PostgreSQL: {line}");
     }
 
     private async Task<ToolResult> RunToolAsync(
@@ -455,12 +457,8 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
             throw;
         }
 
-        var result = new ToolResult(
-            toolProcess.ExitCode,
-            await stdout,
-            await stderr);
+        var result = new ToolResult(toolProcess.ExitCode, await stdout, await stderr);
         AppendToolResult(toolName, result);
-
         return result;
     }
 
@@ -491,7 +489,7 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
             if (!File.Exists(GetBinaryPath(binary)))
             {
                 throw new FileNotFoundException(
-                    $"The desktop PostgreSQL runtime is missing '{binary}'. Populate {runtimeDirectory} with the PostgreSQL Windows binaries before launching the desktop app.",
+                    $"The PostgreSQL runtime is missing '{binary}'. Populate {runtimeDirectory} with the PostgreSQL Windows binaries before launching the desktop app.",
                     GetBinaryPath(binary));
             }
         }
@@ -566,17 +564,17 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         if (string.IsNullOrWhiteSpace(configuredPort))
         {
             AppendPostgresLog(
-                $"{PortEnvironmentVariable} is not set; desktop PostgreSQL will use a dynamically selected loopback port.");
+                $"{PortEnvironmentVariable} is not set; PostgreSQL will use a dynamically selected loopback port.");
             return null;
         }
 
         AppendPostgresLog($"{PortEnvironmentVariable} override requested: {configuredPort}.");
 
-        if (int.TryParse(configuredPort, CultureInfo.InvariantCulture, out var port) &&
-            port is > IPEndPoint.MinPort and <= IPEndPoint.MaxPort)
+        if (int.TryParse(configuredPort, CultureInfo.InvariantCulture, out var configured) &&
+            configured is > IPEndPoint.MinPort and <= IPEndPoint.MaxPort)
         {
-            EnsureResolvedPort(port);
-            return port;
+            EnsureResolvedPort(configured);
+            return configured;
         }
 
         throw new InvalidOperationException(
@@ -613,36 +611,8 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
         if (resolvedPort is <= IPEndPoint.MinPort or > IPEndPoint.MaxPort)
         {
             throw new InvalidOperationException(
-                $"Desktop PostgreSQL requires a resolved TCP port from 1 to 65535, but '{resolvedPort}' was selected.");
+                $"PostgreSQL requires a resolved TCP port from 1 to 65535, but '{resolvedPort}' was selected.");
         }
-    }
-
-    private static string GetApplicationDataDirectory()
-    {
-        try
-        {
-            var packagedLocalFolder = WinAppApplicationData.GetDefault().LocalPath;
-
-            if (!string.IsNullOrWhiteSpace(packagedLocalFolder))
-            {
-                return Path.GetFullPath(Path.Combine(packagedLocalFolder, ProductIdentity.DataFolderName));
-            }
-        }
-        catch (Exception)
-        {
-        }
-
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-
-        if (string.IsNullOrWhiteSpace(localAppData))
-        {
-            localAppData = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "AppData",
-                "Local");
-        }
-
-        return Path.Combine(localAppData, ProductIdentity.DataFolderName);
     }
 
     private static string FormatLogArgument(string argument)
@@ -674,15 +644,5 @@ internal sealed class DesktopPostgresHost : IAsyncDisposable
                 ? $"Exit code: {ExitCode}."
                 : message;
         }
-    }
-
-    internal sealed record DesktopPostgresEndpoint(
-        string Host,
-        int Port,
-        string Database,
-        string User)
-    {
-        public string CreateConnectionString() =>
-            $"Host={Host};Port={Port};Database={Database};Username={User};Pooling=true";
     }
 }

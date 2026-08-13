@@ -52,3 +52,8 @@ compose*.yaml
 compose*.yml
 docker-compose*.yaml
 docker-compose*.yml
+
+# Central build metadata required by API/web Dockerfiles.
+!Directory.Build.props
+!Directory.Product.props
+!Directory.Packages.props

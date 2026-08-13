@@ -28,6 +28,14 @@
       <_Parameter1>PostgresDatabaseName</_Parameter1>
       <_Parameter2>$(PostgresDatabaseName)</_Parameter2>
     </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ApiExecutableName</_Parameter1>
+      <_Parameter2>$(ApiExecutableName)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>RuntimeHostExecutableName</_Parameter1>
+      <_Parameter2>$(RuntimeHostExecutableName)</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
 </Project>

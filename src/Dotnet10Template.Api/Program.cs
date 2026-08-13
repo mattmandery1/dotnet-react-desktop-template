@@ -53,7 +53,39 @@ app.MapGet("/weatherforecast", () =>
 })
 .WithName("GetWeatherForecast");
 
-app.Run();
+StartDesktopOwnedShutdownMonitor(app);
+
+await app.RunAsync();
+
+static void StartDesktopOwnedShutdownMonitor(WebApplication app)
+{
+    var enabled = Environment.GetEnvironmentVariable(
+        ProductIdentity.GetEnvironmentVariableName("DESKTOP_OWNED_API_STDIN_SHUTDOWN"));
+
+    if (!string.Equals(enabled, "1", StringComparison.Ordinal))
+    {
+        return;
+    }
+
+    _ = Task.Run(async () =>
+    {
+        while (!app.Lifetime.ApplicationStopping.IsCancellationRequested)
+        {
+            var line = await Console.In.ReadLineAsync(app.Lifetime.ApplicationStopping);
+            if (line is null)
+            {
+                app.Lifetime.StopApplication();
+                return;
+            }
+
+            if (string.Equals(line, "shutdown", StringComparison.Ordinal))
+            {
+                app.Lifetime.StopApplication();
+                return;
+            }
+        }
+    });
+}
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {

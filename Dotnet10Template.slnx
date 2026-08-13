@@ -20,6 +20,9 @@
     <Project Path="src/Dotnet10Template.Infrastructure/Dotnet10Template.Infrastructure.csproj">
       <Platform Solution="*|x64" Project="x64" />
     </Project>
+    <Project Path="src/Dotnet10Template.RuntimeHost/Dotnet10Template.RuntimeHost.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Dotnet10Template.IntegrationTests/Dotnet10Template.IntegrationTests.csproj">

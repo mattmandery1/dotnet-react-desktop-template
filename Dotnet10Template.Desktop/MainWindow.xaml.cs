@@ -17,12 +17,11 @@ namespace Dotnet10Template.Desktop
     public sealed partial class MainWindow : Window
     {
         private const string AppHostName = "app.local";
-        private readonly DesktopPostgresHost postgresHost = new();
         private readonly HttpClient apiClient = new(new HttpClientHandler
         {
             AllowAutoRedirect = false
         });
-        private DesktopApiHost? apiHost;
+        private RuntimeHostClient? runtimeHost;
         private string? appFolder;
         private int shutdownStarted;
         private bool finalCloseAllowed;
@@ -56,16 +55,12 @@ namespace Dotnet10Template.Desktop
                     throw new FileNotFoundException("The bundled React app was not found. Build the desktop project to generate and copy the web assets.", indexPath);
                 }
 
-                DesktopHostLog.Append("PostgreSQL startup beginning.");
-                await postgresHost.StartAsync();
-                DesktopHostLog.Append("PostgreSQL startup completed.");
-
-                apiHost = new DesktopApiHost(postgresHost.Endpoint);
-                DesktopHostLog.Append("API startup beginning.");
-                await apiHost.StartAsync();
-                DesktopHostLog.Append("API startup completed.");
-                DesktopHostLog.Append(
-                    $"Desktop runtime endpoints: PostgreSQL {postgresHost.Endpoint.Host}:{postgresHost.Endpoint.Port}; API {apiHost.BaseUri}.");
+                runtimeHost = new RuntimeHostClient();
+                runtimeHost.RuntimeHostExited += RuntimeHost_RuntimeHostExited;
+                runtimeHost.RuntimeHostFatal += RuntimeHost_RuntimeHostFatal;
+                DesktopHostLog.Append("RuntimeHost startup beginning.");
+                await runtimeHost.StartAsync();
+                DesktopHostLog.Append("RuntimeHost startup completed.");
 
                 DesktopHostLog.Append("WebView2 initialization beginning.");
                 await AppWebView.EnsureCoreWebView2Async();
@@ -151,16 +146,14 @@ namespace Dotnet10Template.Desktop
             {
                 apiClient.Dispose();
 
-                if (apiHost is not null)
+                if (runtimeHost is not null)
                 {
-                    DesktopHostLog.Append("API shutdown started during desktop shutdown.");
-                    await apiHost.DisposeAsync().ConfigureAwait(false);
-                    DesktopHostLog.Append("API shutdown completed during desktop shutdown.");
+                    runtimeHost.RuntimeHostExited -= RuntimeHost_RuntimeHostExited;
+                    runtimeHost.RuntimeHostFatal -= RuntimeHost_RuntimeHostFatal;
+                    DesktopHostLog.Append("RuntimeHost shutdown started during desktop shutdown.");
+                    await runtimeHost.DisposeAsync().ConfigureAwait(false);
+                    DesktopHostLog.Append("RuntimeHost shutdown completed during desktop shutdown.");
                 }
-
-                DesktopHostLog.Append("PostgreSQL shutdown started during desktop shutdown.");
-                await postgresHost.DisposeAsync().ConfigureAwait(false);
-                DesktopHostLog.Append("PostgreSQL shutdown completed during desktop shutdown.");
             }
             catch (Exception ex)
             {
@@ -329,12 +322,34 @@ namespace Dotnet10Template.Desktop
 
         private Uri CreateApiUri(Uri requestUri)
         {
-            if (apiHost is null)
+            if (runtimeHost is null)
             {
                 throw new InvalidOperationException("The bundled API is not running.");
             }
 
-            return new Uri(apiHost.BaseUri, requestUri.PathAndQuery);
+            return new Uri(runtimeHost.ApiBaseUri, requestUri.PathAndQuery);
+        }
+
+        private void RuntimeHost_RuntimeHostExited(object? sender, int exitCode)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                var exception = new InvalidOperationException(
+                    $"The local runtime host exited unexpectedly with code {exitCode}. Close and restart {ProductIdentity.ShortName}.");
+                DesktopHostLog.Append(exception.Message);
+                ShowStartupError(exception);
+            });
+        }
+
+        private void RuntimeHost_RuntimeHostFatal(object? sender, string message)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                var exception = new InvalidOperationException(
+                    $"{message} Close and restart {ProductIdentity.ShortName}.");
+                DesktopHostLog.Append(exception.Message);
+                ShowStartupError(exception);
+            });
         }
 
         private void ShowStartupError(Exception exception)

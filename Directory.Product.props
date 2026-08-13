@@ -15,6 +15,7 @@
     <ProductPhonePublisherId>4c9cbdf7-4581-4e2c-bf15-740a149556ef</ProductPhonePublisherId>
 
     <DesktopExecutableName>Dotnet10Template.Desktop</DesktopExecutableName>
+    <RuntimeHostExecutableName>Dotnet10Template.RuntimeHost</RuntimeHostExecutableName>
     <ApiExecutableName>Dotnet10Template.Api</ApiExecutableName>
 
     <PostgresDatabaseName>dotnet10template</PostgresDatabaseName>

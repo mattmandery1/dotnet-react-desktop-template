@@ -1,6 +1,6 @@
 # Desktop PostgreSQL runtime
 
-`Dotnet10Template.Desktop` owns a private PostgreSQL runtime in desktop mode. Docker and a separately installed PostgreSQL service are not required for the desktop app.
+`Dotnet10Template.Desktop` owns the user experience. It launches `Dotnet10Template.RuntimeHost`, and RuntimeHost owns the private PostgreSQL and API processes in desktop mode. Docker and a separately installed PostgreSQL service are not required for the desktop app.
 
 ## Runtime folder
 
@@ -29,7 +29,7 @@ Dotnet10Template.Desktop\Runtime\Postgres\bin\psql.exe
 Dotnet10Template.Desktop\Runtime\Postgres\bin\createdb.exe
 ```
 
-The desktop project copies `Runtime/Postgres/**` to the build, publish, and packaged output when the folder is present. In packaged MSIX runs, the app copies that private runtime to the per-user app data directory and executes PostgreSQL from there.
+The desktop project copies `Runtime/Postgres/**` to the build, publish, and packaged output when the folder is present. RuntimeHost copies that private runtime to the per-user app data directory and executes PostgreSQL from there.
 
 ## Data directory
 
@@ -61,11 +61,7 @@ Desktop PostgreSQL binds only to:
 127.0.0.1
 ```
 
-The default desktop PostgreSQL port is:
-
-```text
-55432
-```
+The PostgreSQL port is dynamically selected on each RuntimeHost launch.
 
 Override it for local development with:
 
@@ -73,16 +69,29 @@ Override it for local development with:
 $env:<ProductEnvPrefix>_DESKTOP_POSTGRES_PORT = "55433"
 ```
 
-If the selected port is already occupied, the desktop app fails with a visible startup error. It does not stop or kill unrelated PostgreSQL processes.
+If a dynamically selected port becomes occupied during startup, RuntimeHost retries with a new dynamic loopback port. It does not stop or kill unrelated PostgreSQL processes.
+
+## Process topology
+
+Runtime processes are supervised as:
+
+```text
+Dotnet10Template.Desktop
+  -> Dotnet10Template.RuntimeHost
+       -> postgres.exe
+       -> Dotnet10Template.Api
+```
+
+Desktop and RuntimeHost use a per-launch named pipe for control messages. Desktop waits for RuntimeHost to report the selected API endpoint before loading WebView2. RuntimeHost monitors the exact Desktop PID it was launched for, not a process name.
 
 ## Shutdown behavior
 
-The desktop app owns only the API and PostgreSQL processes it starts. On normal window close, it stops the API first, then stops PostgreSQL with:
+RuntimeHost owns only the API and PostgreSQL processes it starts. On normal window close, Desktop sends a shutdown request over the named pipe. RuntimeHost gracefully stops the API first, then stops PostgreSQL with:
 
 ```text
 pg_ctl stop -D <owned data directory> -m fast -w -t <timeout>
 ```
 
-If a child process does not exit within the bounded shutdown timeout, the desktop app force-kills only that owned child process as a final fallback.
+If Desktop is ended from Task Manager, RuntimeHost detects that the supervised Desktop PID exited, then runs the same API-first/PostgreSQL-second cleanup and exits. If RuntimeHost itself is force-killed, its Windows Job Object closes with `KILL_ON_JOB_CLOSE`, and Windows terminates only the API/PostgreSQL child processes that RuntimeHost assigned to that job. PostgreSQL then relies on normal WAL crash recovery on the next launch.
 
-During development, a hard debugger stop can terminate the desktop process without running normal WinUI shutdown events. That is a development-time limitation; production shutdown should use normal app/window close paths.
+RuntimeHost also redirects the desktop-owned API stdin and sends a `shutdown` command before falling back to process termination. That lets ASP.NET Core run its normal host shutdown path without opening a control port.

@@ -39,6 +39,7 @@ These can be overridden when needed:
 - `ProductPackageVersion`: defaults to `ProductVersion` plus `.0`, for example `1.0.0.0`.
 - `ProductPackageIdentityName`: defaults to `<ProductRootNamespace>.Desktop`.
 - `DesktopExecutableName`: defaults to `<ProductRootNamespace>.Desktop`.
+- `RuntimeHostExecutableName`: defaults to `<ProductRootNamespace>.RuntimeHost`.
 - `ApiExecutableName`: defaults to `<ProductRootNamespace>.Api`.
 - `PostgresDatabaseName`: defaults to a lowercase database token derived from `ProductShortName`, for example `acme_contacts`.
 - `DockerNamePrefix`: defaults to a lowercase Docker token derived from `ProductShortName`, for example `acme-contacts`.
@@ -64,11 +65,12 @@ The initializer structurally renames:
 - `src/Dotnet10Template.Application`
 - `src/Dotnet10Template.Domain`
 - `src/Dotnet10Template.Infrastructure`
+- `src/Dotnet10Template.RuntimeHost`
 - `tests/Dotnet10Template.UnitTests`
 - `tests/Dotnet10Template.IntegrationTests`
 - `src/dotnet10template.web`
 
-It also renames matching `.csproj` and `.http` files, updates solution entries, project references, Docker paths, package paths, launch profile names, C# namespaces/usings, XAML `x:Class` values, EF migration namespaces, EF model snapshot namespaces, and structural references in scripts and docs.
+It also renames matching `.csproj` and `.http` files, updates solution entries, project references, runtime-host paths, Docker paths, package paths, launch profile names, C# namespaces/usings, XAML `x:Class` values, EF migration namespaces, EF model snapshot namespaces, and structural references in scripts and docs.
 
 ## Intentionally unchanged
 

@@ -2,7 +2,7 @@
 
 `scripts/package-desktop.ps1` builds a local MSIX-style desktop installer for `Dotnet10Template.Desktop`.
 
-The installed app is intended to run without Visual Studio, the .NET SDK, Node, npm, Docker, WSL, or a separately installed PostgreSQL server. The desktop package includes the WinUI app, the React production assets, the self-contained local API publish output, and the private PostgreSQL runtime already stored under `Dotnet10Template.Desktop/Runtime/Postgres`.
+The installed app is intended to run without Visual Studio, the .NET SDK, Node, npm, Docker, WSL, or a separately installed PostgreSQL server. The desktop package includes the WinUI app, the RuntimeHost supervisor, the React production assets, the self-contained local API publish output, and the private PostgreSQL runtime already stored under `Dotnet10Template.Desktop/Runtime/Postgres`.
 
 ## Prerequisites
 
@@ -30,6 +30,7 @@ The desktop package script reads this file for:
 - publisher
 - package version
 - desktop executable name
+- RuntimeHost executable name
 - API executable name
 
 `Dotnet10Template.Desktop/Package.appxmanifest` is stamped from those values during build and by `scripts/package-desktop.ps1` before packaging.
@@ -38,6 +39,7 @@ Metadata relationships:
 
 - `ProductDisplayName` is the human-readable Start Menu/package display name.
 - `DesktopExecutableName` controls the desktop app assembly and executable name. It is explicit and is not inferred from the project filename.
+- `RuntimeHostExecutableName` controls the RuntimeHost supervisor assembly and executable name.
 - `ApiExecutableName` controls the API assembly and executable name produced by desktop packaging.
 - `ProductPackageIdentityName` is the stable Windows package identity. Keeping it stable is what allows upgrades to target the same installed app.
 - `ProductPublisher` is the package signing publisher subject and must match the signing certificate subject.
@@ -45,7 +47,7 @@ Metadata relationships:
 - `ProductVersion` is the generic product version used for artifact folders.
 - `ProductPackageVersion` is the four-part Windows package version used in the manifest/package.
 
-`Dotnet10Template.Desktop` embeds `ApiExecutableName` as assembly metadata during build. The desktop runtime host reads that metadata when locating the bundled API, so changing `ApiExecutableName` in `Directory.Product.props` does not require manually editing host path constants in source files.
+`Dotnet10Template.Desktop` and `Dotnet10Template.RuntimeHost` embed executable names as assembly metadata during build. Desktop uses that metadata to locate RuntimeHost, and RuntimeHost uses it to locate the bundled API, so changing executable names in `Directory.Product.props` does not require manually editing host path constants in source files.
 
 ## Signing
 
@@ -81,6 +83,7 @@ The script:
 
 - restores and builds the React app with `npm ci` and `npm run build`
 - publishes the API project self-contained for the selected runtime identifier
+- publishes the RuntimeHost project self-contained for the selected runtime identifier
 - publishes/packages `Dotnet10Template.Desktop`
 - signs the generated package
 - places final artifacts under `artifacts/desktop/<version>/`
@@ -103,7 +106,7 @@ artifacts/desktop/<ProductVersion>/
 
 Expected files include the generated `.msix` or `.appx` package, package install helper files produced by MSBuild, and any exported `.cer` file when a development certificate is generated.
 
-The script also writes an intermediate API publish folder under the same versioned artifact directory so the exact API payload used for the package can be inspected.
+The script also writes intermediate API and RuntimeHost publish folders under the same versioned artifact directory so the exact payloads used for the package can be inspected.
 
 ## Manual install
 
@@ -166,6 +169,18 @@ The packaged app also copies the bundled private PostgreSQL runtime to:
 ```
 
 PostgreSQL is executed from that per-user runtime copy. The package still remains the source for the private PostgreSQL binaries; `postgres.exe` is not renamed and no external PostgreSQL installation is used.
+
+RuntimeHost is packaged under:
+
+```text
+RuntimeHost\
+```
+
+The API is packaged under:
+
+```text
+Api\
+```
 
 ## Data behavior
 

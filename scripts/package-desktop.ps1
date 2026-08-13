@@ -278,8 +278,10 @@ Save-StampedPackageManifest `
 
 $artifactRoot = Join-Path $repoRoot "artifacts\desktop\$productVersion"
 $apiPublishDir = Join-Path $artifactRoot "api-publish-$RuntimeIdentifier"
+$runtimeHostPublishDir = Join-Path $artifactRoot "runtime-host-publish-$RuntimeIdentifier"
 $desktopProject = Join-Path $repoRoot "Dotnet10Template.Desktop\Dotnet10Template.Desktop.csproj"
 $apiProject = Join-Path $repoRoot "src\Dotnet10Template.Api\Dotnet10Template.Api.csproj"
+$runtimeHostProject = Join-Path $repoRoot "src\Dotnet10Template.RuntimeHost\Dotnet10Template.RuntimeHost.csproj"
 $webProjectDir = Join-Path $repoRoot "src\dotnet10template.web"
 
 $platform = switch ($RuntimeIdentifier) {
@@ -375,6 +377,18 @@ Invoke-Checked -FilePath "dotnet" -Arguments @(
     "--runtime", $RuntimeIdentifier,
     "--self-contained", "true",
     "--output", $apiPublishDir,
+    "-p:UseAppHost=true",
+    "-p:PublishSingleFile=false"
+) -WorkingDirectory $repoRoot
+
+Invoke-Checked -FilePath "dotnet" -Arguments @(
+    "publish",
+    $runtimeHostProject,
+    "--nologo",
+    "--configuration", $Configuration,
+    "--runtime", $RuntimeIdentifier,
+    "--self-contained", "true",
+    "--output", $runtimeHostPublishDir,
     "-p:UseAppHost=true",
     "-p:PublishSingleFile=false"
 ) -WorkingDirectory $repoRoot
