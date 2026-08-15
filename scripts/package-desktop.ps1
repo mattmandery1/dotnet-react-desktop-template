@@ -4,6 +4,8 @@ param(
     [string]$RuntimeIdentifier = "win-x64",
     [string]$CertificatePath,
     [securestring]$CertificatePassword,
+    [switch]$Development,
+    [switch]$RegenerateDevelopmentCertificate,
     [switch]$GenerateDevelopmentCertificate
 )
 
@@ -137,6 +139,46 @@ function Read-SigningCertificate {
     }
 }
 
+function New-DevelopmentSigningCertificate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [securestring]$Password,
+        [Parameter(Mandatory = $true)]
+        [string]$Subject,
+        [Parameter(Mandatory = $true)]
+        [string]$DisplayName
+    )
+
+    Write-Host "Creating development signing certificate: $Path"
+    $cert = New-SelfSignedCertificate `
+        -Type Custom `
+        -Subject $Subject `
+        -KeyAlgorithm RSA `
+        -KeyLength 2048 `
+        -KeyExportPolicy Exportable `
+        -KeySpec Signature `
+        -HashAlgorithm SHA256 `
+        -KeyUsage DigitalSignature `
+        -FriendlyName "$DisplayName Development Signing" `
+        -CertStoreLocation "Cert:\CurrentUser\My" `
+        -NotAfter (Get-Date).AddYears(3) `
+        -TextExtension @(
+            "2.5.29.19={critical}{text}CA=false",
+            "2.5.29.37={text}1.3.6.1.5.5.7.3.3"
+        )
+
+    Export-PfxCertificate `
+        -Cert $cert `
+        -FilePath $Path `
+        -Password $Password | Out-Null
+
+    Export-Certificate `
+        -Cert $cert `
+        -FilePath ([IO.Path]::ChangeExtension($Path, ".cer")) | Out-Null
+}
+
 function Assert-SigningCertificateBase {
     param(
         [Parameter(Mandatory = $true)]
@@ -250,6 +292,13 @@ if (-not (Test-Path (Join-Path $repoRoot "Dotnet10Template.slnx"))) {
     throw "Run this script from the repository root."
 }
 
+if ($Development) {
+    $GenerateDevelopmentCertificate = $true
+    if ($null -eq $CertificatePassword) {
+        $CertificatePassword = Read-Host -AsSecureString "Development PFX password"
+    }
+}
+
 $productPropsPath = Join-Path $repoRoot "Directory.Product.props"
 if (-not (Test-Path $productPropsPath)) {
     throw "Directory.Product.props was not found."
@@ -291,15 +340,19 @@ $platform = switch ($RuntimeIdentifier) {
     default { throw "Unsupported desktop runtime identifier '$RuntimeIdentifier'." }
 }
 
-Remove-Item -LiteralPath $artifactRoot -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
-
+$defaultDevelopmentCertificatePath = Join-Path $repoRoot ".certificates\desktop-dev-signing.pfx"
+$usesDefaultDevelopmentCertificatePath = $false
 if ($GenerateDevelopmentCertificate -and [string]::IsNullOrWhiteSpace($CertificatePath)) {
-    $CertificatePath = Join-Path $repoRoot ".certificates\desktop-dev-signing.pfx"
+    $CertificatePath = $defaultDevelopmentCertificatePath
+    $usesDefaultDevelopmentCertificatePath = $true
 }
 
 if (-not [string]::IsNullOrWhiteSpace($CertificatePath) -and -not [IO.Path]::IsPathRooted($CertificatePath)) {
     $CertificatePath = Join-Path $repoRoot $CertificatePath
+}
+
+if ($GenerateDevelopmentCertificate -and $CertificatePath -eq $defaultDevelopmentCertificatePath) {
+    $usesDefaultDevelopmentCertificatePath = $true
 }
 
 $certificatePasswordText = ConvertTo-PlainText $CertificatePassword
@@ -309,38 +362,37 @@ if ($GenerateDevelopmentCertificate) {
     }
 
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $CertificatePath) | Out-Null
-    if (-not (Test-Path $CertificatePath)) {
-        Write-Host "Creating development signing certificate: $CertificatePath"
-        $cert = New-SelfSignedCertificate `
-            -Type Custom `
-            -Subject $publisher `
-            -KeyAlgorithm RSA `
-            -KeyLength 2048 `
-            -KeyExportPolicy Exportable `
-            -KeySpec Signature `
-            -HashAlgorithm SHA256 `
-            -KeyUsage DigitalSignature `
-            -FriendlyName "$displayName Development Signing" `
-            -CertStoreLocation "Cert:\CurrentUser\My" `
-            -NotAfter (Get-Date).AddYears(3) `
-            -TextExtension @(
-                "2.5.29.19={critical}{text}CA=false",
-                "2.5.29.37={text}1.3.6.1.5.5.7.3.3"
-            )
 
-        Export-PfxCertificate `
-            -Cert $cert `
-            -FilePath $CertificatePath `
-            -Password $CertificatePassword | Out-Null
+    if ($RegenerateDevelopmentCertificate) {
+        if (-not $Development -or -not $usesDefaultDevelopmentCertificatePath) {
+            throw "-RegenerateDevelopmentCertificate is only supported with -Development and the default generated path '$defaultDevelopmentCertificatePath'. It will not delete external signing material."
+        }
 
-        Export-Certificate `
-            -Cert $cert `
-            -FilePath ([IO.Path]::ChangeExtension($CertificatePath, ".cer")) | Out-Null
+        Write-Host "Regenerating default development signing certificate material."
+        Remove-Item -LiteralPath $CertificatePath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath ([IO.Path]::ChangeExtension($CertificatePath, ".cer")) -Force -ErrorAction SilentlyContinue
     }
 
-    $developmentCertificate = Read-SigningCertificate `
-        -Path $CertificatePath `
-        -Password $certificatePasswordText
+    if (-not (Test-Path $CertificatePath)) {
+        New-DevelopmentSigningCertificate `
+            -Path $CertificatePath `
+            -Password $CertificatePassword `
+            -Subject $publisher `
+            -DisplayName $displayName
+    }
+
+    try {
+        $developmentCertificate = Read-SigningCertificate `
+            -Path $CertificatePath `
+            -Password $certificatePasswordText
+    }
+    catch {
+        if ($Development -and $usesDefaultDevelopmentCertificatePath) {
+            throw "Unable to read the generated development certificate '$CertificatePath'. The password may not match the existing local PFX. To safely regenerate the template-owned development certificate, rerun: .\scripts\package-desktop.ps1 -Development -RegenerateDevelopmentCertificate"
+        }
+
+        throw
+    }
 
     Assert-DevelopmentSigningCertificate `
         -Certificate $developmentCertificate `
@@ -360,6 +412,9 @@ $signingCertificate = Import-SigningCertificate `
     -Path $CertificatePath `
     -Password $certificatePasswordText `
     -ExpectedSubject $publisher
+
+Remove-Item -LiteralPath $artifactRoot -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
 
 $publicCertificatePath = Join-Path $artifactRoot "desktop-signing.cer"
 Export-Certificate -Cert $signingCertificate -FilePath $publicCertificatePath -Force | Out-Null

@@ -53,7 +53,7 @@ Every initialization generates fresh values for:
 - `ProductPhonePublisherId`
 - API `UserSecretsId`
 
-Known generated local signing material and package outputs are removed from `.certificates`, `artifacts`, `Dotnet10Template.Desktop/AppPackages`, `Dotnet10Template.Desktop/artifacts`, and `Dotnet10Template.Desktop/BundleArtifacts`. Other certificate files elsewhere in the repository are preserved. Do not reuse template `.pfx` files or private keys. The initialized product should generate its own development certificate when `scripts/package-desktop.ps1` is run with `-GenerateDevelopmentCertificate`.
+Known generated local signing material and package outputs are removed from `.certificates`, `artifacts`, `Dotnet10Template.Desktop/AppPackages`, `Dotnet10Template.Desktop/artifacts`, and `Dotnet10Template.Desktop/BundleArtifacts`. Other certificate files elsewhere in the repository are preserved. Do not reuse template `.pfx` files or private keys. The initialized product should generate its own development certificate when `scripts/package-desktop.ps1` is run with `-Development`.
 
 ## Renamed structure
 
@@ -119,4 +119,9 @@ Use `-SkipValidation` only when the local machine is missing required tooling an
 
 ## Next steps
 
-After initialization, review `Directory.Product.props`, commit the rename, then perform a clean-clone install and packaging test for the new product. When packaging the desktop app, create a new development signing certificate for the initialized publisher.
+After initialization, review `Directory.Product.props`, commit the rename, then perform a clean-clone install and packaging test for the new product:
+
+```powershell
+.\scripts\package-desktop.ps1 -Development
+.\scripts\install-desktop-dev.ps1
+```
