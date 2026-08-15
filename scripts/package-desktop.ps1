@@ -53,51 +53,6 @@ function Get-RequiredProperty {
     return $node.InnerText.Trim()
 }
 
-function Save-StampedPackageManifest {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path,
-        [Parameter(Mandatory = $true)]
-        [string]$PackageIdentity,
-        [Parameter(Mandatory = $true)]
-        [string]$Publisher,
-        [Parameter(Mandatory = $true)]
-        [string]$PackageVersion,
-        [Parameter(Mandatory = $true)]
-        [string]$DisplayName,
-        [Parameter(Mandatory = $true)]
-        [string]$PublisherDisplayName,
-        [Parameter(Mandatory = $true)]
-        [string]$PhoneProductId,
-        [Parameter(Mandatory = $true)]
-        [string]$PhonePublisherId
-    )
-
-    [xml]$manifest = Get-Content -Raw $Path
-    $namespaceManager = [Xml.XmlNamespaceManager]::new($manifest.NameTable)
-    $namespaceManager.AddNamespace("pkg", "http://schemas.microsoft.com/appx/manifest/foundation/windows10")
-    $namespaceManager.AddNamespace("mp", "http://schemas.microsoft.com/appx/2014/phone/manifest")
-    $namespaceManager.AddNamespace("uap", "http://schemas.microsoft.com/appx/manifest/uap/windows10")
-
-    $identity = $manifest.SelectSingleNode("/pkg:Package/pkg:Identity", $namespaceManager)
-    $identity.SetAttribute("Name", $PackageIdentity)
-    $identity.SetAttribute("Publisher", $Publisher)
-    $identity.SetAttribute("Version", $PackageVersion)
-
-    $phoneIdentity = $manifest.SelectSingleNode("/pkg:Package/mp:PhoneIdentity", $namespaceManager)
-    $phoneIdentity.SetAttribute("PhoneProductId", $PhoneProductId)
-    $phoneIdentity.SetAttribute("PhonePublisherId", $PhonePublisherId)
-
-    $manifest.SelectSingleNode("/pkg:Package/pkg:Properties/pkg:DisplayName", $namespaceManager).InnerText = $DisplayName
-    $manifest.SelectSingleNode("/pkg:Package/pkg:Properties/pkg:PublisherDisplayName", $namespaceManager).InnerText = $PublisherDisplayName
-
-    $visualElements = $manifest.SelectSingleNode("/pkg:Package/pkg:Applications/pkg:Application/uap:VisualElements", $namespaceManager)
-    $visualElements.SetAttribute("DisplayName", $DisplayName)
-    $visualElements.SetAttribute("Description", $DisplayName)
-
-    $manifest.Save($Path)
-}
-
 function ConvertTo-PlainText {
     param([securestring]$Value)
 
@@ -313,17 +268,6 @@ $displayName = Get-RequiredProperty $productProps "ProductDisplayName"
 $publisherDisplayName = Get-RequiredProperty $productProps "ProductPublisherDisplayName"
 $phoneProductId = Get-RequiredProperty $productProps "ProductPhoneProductId"
 $phonePublisherId = Get-RequiredProperty $productProps "ProductPhonePublisherId"
-
-$manifestPath = Join-Path $repoRoot "Dotnet10Template.Desktop\Package.appxmanifest"
-Save-StampedPackageManifest `
-    -Path $manifestPath `
-    -PackageIdentity $packageIdentity `
-    -Publisher $publisher `
-    -PackageVersion $packageVersion `
-    -DisplayName $displayName `
-    -PublisherDisplayName $publisherDisplayName `
-    -PhoneProductId $phoneProductId `
-    -PhonePublisherId $phonePublisherId
 
 $artifactRoot = Join-Path $repoRoot "artifacts\desktop\$productVersion"
 $apiPublishDir = Join-Path $artifactRoot "api-publish-$RuntimeIdentifier"

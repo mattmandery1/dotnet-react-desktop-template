@@ -17,6 +17,7 @@
     <ApiProjectPath>$(MSBuildProjectDirectory)\..\src\Dotnet10Template.Api\Dotnet10Template.Api.csproj</ApiProjectPath>
     <RuntimeHostProjectPath>$(MSBuildProjectDirectory)\..\src\Dotnet10Template.RuntimeHost\Dotnet10Template.RuntimeHost.csproj</RuntimeHostProjectPath>
     <PostgresRuntimeDir>$(MSBuildProjectDirectory)\Runtime\Postgres\</PostgresRuntimeDir>
+    <PackageManifestTemplate>$(MSBuildProjectDirectory)\Package.appxmanifest</PackageManifestTemplate>
     <DesktopApiRuntimeArgs Condition="'$(RuntimeIdentifier)' != ''">--runtime &quot;$(RuntimeIdentifier)&quot; --self-contained true</DesktopApiRuntimeArgs>
     <DesktopApiRuntimeArgs Condition="'$(RuntimeIdentifier)' == ''">--no-self-contained</DesktopApiRuntimeArgs>
     <DesktopRuntimeHostRuntimeArgs Condition="'$(RuntimeIdentifier)' != ''">--runtime &quot;$(RuntimeIdentifier)&quot; --self-contained true</DesktopRuntimeHostRuntimeArgs>
@@ -87,41 +88,54 @@
     </ItemGroup>
   </Target>
 
-  <Target Name="StampPackageManifestProductIdentity"
-          BeforeTargets="Build;_GenerateAppxPackageFile">
-    <XmlPoke XmlInputPath="Package.appxmanifest"
+  <Target Name="PrepareGeneratedPackageManifest"
+          BeforeTargets="_ValidatePresenceOfAppxManifestItems;_GenerateProjectPriConfigurationFiles;_GenerateAppxPackageFile">
+    <PropertyGroup>
+      <GeneratedPackageManifest>$(IntermediateOutputPath)Package.appxmanifest</GeneratedPackageManifest>
+    </PropertyGroup>
+    <ItemGroup>
+      <AppxManifest Remove="@(AppxManifest)" />
+      <AppxManifest Include="$(GeneratedPackageManifest)">
+        <SubType>Designer</SubType>
+      </AppxManifest>
+    </ItemGroup>
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(GeneratedPackageManifest)'))" />
+    <Copy SourceFiles="$(PackageManifestTemplate)"
+          DestinationFiles="$(GeneratedPackageManifest)"
+          SkipUnchangedFiles="false" />
+    <XmlPoke XmlInputPath="$(GeneratedPackageManifest)"
              Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='mp' Uri='http://schemas.microsoft.com/appx/2014/phone/manifest' /&gt;&lt;Namespace Prefix='uap' Uri='http://schemas.microsoft.com/appx/manifest/uap/windows10' /&gt;"
              Query="/pkg:Package/pkg:Identity/@Name"
              Value="$(ProductPackageIdentityName)" />
-    <XmlPoke XmlInputPath="Package.appxmanifest"
+    <XmlPoke XmlInputPath="$(GeneratedPackageManifest)"
              Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;"
              Query="/pkg:Package/pkg:Identity/@Publisher"
              Value="$(ProductPublisher)" />
-    <XmlPoke XmlInputPath="Package.appxmanifest"
+    <XmlPoke XmlInputPath="$(GeneratedPackageManifest)"
              Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;"
              Query="/pkg:Package/pkg:Identity/@Version"
              Value="$(ProductPackageVersion)" />
-    <XmlPoke XmlInputPath="Package.appxmanifest"
+    <XmlPoke XmlInputPath="$(GeneratedPackageManifest)"
              Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='mp' Uri='http://schemas.microsoft.com/appx/2014/phone/manifest' /&gt;"
              Query="/pkg:Package/mp:PhoneIdentity/@PhoneProductId"
              Value="$(ProductPhoneProductId)" />
-    <XmlPoke XmlInputPath="Package.appxmanifest"
+    <XmlPoke XmlInputPath="$(GeneratedPackageManifest)"
              Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='mp' Uri='http://schemas.microsoft.com/appx/2014/phone/manifest' /&gt;"
              Query="/pkg:Package/mp:PhoneIdentity/@PhonePublisherId"
              Value="$(ProductPhonePublisherId)" />
-    <XmlPoke XmlInputPath="Package.appxmanifest"
+    <XmlPoke XmlInputPath="$(GeneratedPackageManifest)"
              Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;"
              Query="/pkg:Package/pkg:Properties/pkg:DisplayName"
              Value="$(ProductDisplayName)" />
-    <XmlPoke XmlInputPath="Package.appxmanifest"
+    <XmlPoke XmlInputPath="$(GeneratedPackageManifest)"
              Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;"
              Query="/pkg:Package/pkg:Properties/pkg:PublisherDisplayName"
              Value="$(ProductPublisherDisplayName)" />
-    <XmlPoke XmlInputPath="Package.appxmanifest"
+    <XmlPoke XmlInputPath="$(GeneratedPackageManifest)"
              Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='uap' Uri='http://schemas.microsoft.com/appx/manifest/uap/windows10' /&gt;"
              Query="/pkg:Package/pkg:Applications/pkg:Application/uap:VisualElements/@DisplayName"
              Value="$(ProductDisplayName)" />
-    <XmlPoke XmlInputPath="Package.appxmanifest"
+    <XmlPoke XmlInputPath="$(GeneratedPackageManifest)"
              Namespaces="&lt;Namespace Prefix='pkg' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='uap' Uri='http://schemas.microsoft.com/appx/manifest/uap/windows10' /&gt;"
              Query="/pkg:Package/pkg:Applications/pkg:Application/uap:VisualElements/@Description"
              Value="$(ProductDisplayName)" />
