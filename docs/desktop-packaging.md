@@ -33,7 +33,7 @@ The desktop package script reads this file for:
 - RuntimeHost executable name
 - API executable name
 
-`Dotnet10Template.Desktop/Package.appxmanifest` is stamped from those values during build and by `scripts/package-desktop.ps1` before packaging.
+`Dotnet10Template.Desktop/Package.appxmanifest` is a stable source template. During build, the Desktop project copies it to configuration/RID-specific intermediate output and stamps product metadata into the generated manifest before packaging.
 
 Metadata relationships:
 

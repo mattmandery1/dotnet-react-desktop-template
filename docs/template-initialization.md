@@ -102,8 +102,8 @@ After rewriting, the script scans for remaining `Dotnet10Template`, `dotnet10tem
 By default the script runs:
 
 - `dotnet restore`
-- `dotnet build -c Debug --no-restore`
-- `dotnet build -c Release --no-restore`
+- `dotnet build -c Debug --no-restore -warnaserror`
+- `dotnet build -c Release --no-restore -warnaserror`
 - unit tests
 - `npm ci`
 - `npm run build`
