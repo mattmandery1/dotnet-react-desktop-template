@@ -47,7 +47,7 @@ Write-Host "  $displayName"
 Write-Host "  Version: $($package.Version)"
 Write-Host "  Package: $($package.PackageFullName)"
 Write-Host ""
-Write-Host "Warning: current MSIX uninstall semantics may remove this app's LocalState, including PostgresData."
+Write-Host "Warning: Uninstalling removes this application's local data, including its PostgreSQL database." -ForegroundColor Yellow
 
 if (-not $Force) {
     $answer = Read-Host "Type REMOVE to uninstall this package"

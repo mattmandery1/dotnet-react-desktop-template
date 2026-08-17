@@ -53,6 +53,18 @@ The writable packaged PostgreSQL runtime copy is stored beside the data folder:
 <per-user app data>/<ProductDataFolderName>/PostgresRuntime
 ```
 
+## Data lifecycle policy
+
+The template keeps `PostgresData` under the MSIX LocalState-backed app data path. It does not add Persistent Identity, does not move database files outside LocalState, and does not include backup/restore infrastructure. Persistent data across uninstall is intentionally left to the cloned product's domain requirements.
+
+| Scenario | PostgreSQL data behavior |
+| --- | --- |
+| Normal restart | Preserved. RuntimeHost reuses existing `PostgresData` when `PG_VERSION` exists. |
+| MSIX in-place update | Preserved. Updating the same package identity does not uninstall first, so LocalState remains available. |
+| Runtime crash/recovery | Preserved. Existing `PostgresData` remains in place; PostgreSQL performs normal WAL crash recovery on the next launch when needed. |
+| Full uninstall | Removed. Uninstalling removes this application's LocalState, including `PostgresData` and the local PostgreSQL database. |
+| Reinstall after uninstall | Fresh database. The next launch initializes a new `PostgresData` with `initdb` and normal migrations recreate the sample data. |
+
 ## Local binding and port
 
 Desktop PostgreSQL binds only to:

@@ -170,7 +170,7 @@ The developer should not need to locate `.cer`, `.msix`, generated `_Test` folde
 
 Visual Studio can register a loose/debug app package from the project `bin` folder while debugging. That registration has the same package identity as the packaged app but is not the installed MSIX package.
 
-If Windows reports that this loose registration conflicts with the packaged app, `install-desktop-dev.ps1` stops with a targeted message. It does not automatically remove the debug deployment because removal/uninstall semantics may affect LocalState data. Close the app and remove the debug deployment from Visual Studio or Windows Settings before installing the packaged development build.
+If Windows reports that this loose registration conflicts with the packaged app, `install-desktop-dev.ps1` stops with a targeted message. It does not automatically remove the debug deployment because removing a package registration may remove LocalState data. Close the app and remove the debug deployment from Visual Studio or Windows Settings before installing the packaged development build.
 
 ## Manual uninstall
 
@@ -186,7 +186,7 @@ or use PowerShell:
 .\scripts\uninstall-desktop-dev.ps1
 ```
 
-The uninstall helper identifies only the package identity from `Directory.Product.props`, shows the package/version being removed, warns about LocalState/PostgresData, and requires typing `REMOVE` unless `-Force` is supplied. It does not remove certificates.
+The uninstall helper identifies only the package identity from `Directory.Product.props`, shows the package/version being removed, warns that uninstall removes this application's local data including its PostgreSQL database, and requires typing `REMOVE` unless `-Force` is supplied. It does not remove certificates.
 
 ## PostgreSQL data
 
@@ -228,12 +228,16 @@ The API is packaged under:
 Api\
 ```
 
-## Data behavior
+## Data lifecycle policy
 
 First launch initializes `PostgresData` with `initdb`, creates the application database, and applies normal application initialization. Later launches reuse the existing data directory when `PG_VERSION` is present.
 
-Package upgrades with the same package identity are expected to preserve the per-user local app data area, so the PostgreSQL data directory is reused across upgrades.
+The template intentionally keeps PostgreSQL data under the MSIX LocalState-backed app data path. It does not move `PostgresData` outside LocalState, does not add Persistent Identity, and does not provide backup/restore infrastructure. Any requirement to preserve product data across uninstall is a product/domain decision for a cloned application.
 
-Ordinary uninstall follows Windows/MSIX package behavior for per-user app data. This project does not add custom uninstall code and does not intentionally delete PostgreSQL data.
-
-Observed local validation on Windows on August 11, 2026: `Remove-AppxPackage` removed the package LocalState data for this app, so reinstalling the same package caused PostgreSQL to initialize a fresh `PostgresData` directory. Closing and relaunching without uninstall preserved and reused the existing database.
+| Scenario | PostgreSQL data behavior |
+| --- | --- |
+| Normal restart | Preserved. RuntimeHost reuses existing `PostgresData` when `PG_VERSION` is present. |
+| MSIX in-place update | Preserved. `install-desktop-dev.ps1` uses `Add-AppxPackage` update semantics for the same package identity and does not uninstall first. |
+| Runtime crash/recovery | Preserved. Existing `PostgresData` remains in place; PostgreSQL performs normal WAL crash recovery on next launch when needed. |
+| Full uninstall | Removed. Uninstalling the MSIX removes this application's LocalState, including `<ProductDataFolderName>\PostgresData`. |
+| Reinstall after uninstall | Fresh database. First launch after reinstall runs `initdb` again and recreates the application sample data through normal migrations/initialization. |
