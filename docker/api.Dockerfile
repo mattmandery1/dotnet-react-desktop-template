@@ -8,22 +8,22 @@ WORKDIR /src
 COPY ["Directory.Build.props", "./"]
 COPY ["Directory.Product.props", "./"]
 COPY ["Directory.Packages.props", "./"]
-COPY ["src/Dotnet10Template.Api/Dotnet10Template.Api.csproj", "src/Dotnet10Template.Api/"]
-COPY ["src/Dotnet10Template.Application/Dotnet10Template.Application.csproj", "src/Dotnet10Template.Application/"]
-COPY ["src/Dotnet10Template.Domain/Dotnet10Template.Domain.csproj", "src/Dotnet10Template.Domain/"]
-COPY ["src/Dotnet10Template.Infrastructure/Dotnet10Template.Infrastructure.csproj", "src/Dotnet10Template.Infrastructure/"]
+COPY ["src/PokerTrainer.Api/PokerTrainer.Api.csproj", "src/PokerTrainer.Api/"]
+COPY ["src/PokerTrainer.Application/PokerTrainer.Application.csproj", "src/PokerTrainer.Application/"]
+COPY ["src/PokerTrainer.Domain/PokerTrainer.Domain.csproj", "src/PokerTrainer.Domain/"]
+COPY ["src/PokerTrainer.Infrastructure/PokerTrainer.Infrastructure.csproj", "src/PokerTrainer.Infrastructure/"]
 
-RUN dotnet restore "src/Dotnet10Template.Api/Dotnet10Template.Api.csproj"
+RUN dotnet restore "src/PokerTrainer.Api/PokerTrainer.Api.csproj"
 
 COPY . .
 
-WORKDIR "/src/src/Dotnet10Template.Api"
+WORKDIR "/src/src/PokerTrainer.Api"
 
-RUN dotnet publish "Dotnet10Template.Api.csproj" \
+RUN dotnet publish "PokerTrainer.Api.csproj" \
     -c Release \
     -o /app/publish \
     /p:UseAppHost=false
-RUN dotnet msbuild "Dotnet10Template.Api.csproj" \
+RUN dotnet msbuild "PokerTrainer.Api.csproj" \
     -nologo \
     -getProperty:ApiExecutableName > /app/publish/api-executable-name
 

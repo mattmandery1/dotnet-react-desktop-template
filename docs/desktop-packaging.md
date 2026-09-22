@@ -1,8 +1,8 @@
 # Desktop packaging
 
-`scripts/package-desktop.ps1` builds a local MSIX-style desktop installer for `Dotnet10Template.Desktop`.
+`scripts/package-desktop.ps1` builds a local MSIX-style desktop installer for `PokerTrainer.Desktop`.
 
-The installed app is intended to run without Visual Studio, the .NET SDK, Node, npm, Docker, WSL, or a separately installed PostgreSQL server. The desktop package includes the WinUI app, the RuntimeHost supervisor, the React production assets, the self-contained local API publish output, and the private PostgreSQL runtime already stored under `Dotnet10Template.Desktop/Runtime/Postgres`.
+The installed app is intended to run without Visual Studio, the .NET SDK, Node, npm, Docker, WSL, or a separately installed PostgreSQL server. The desktop package includes the WinUI app, the RuntimeHost supervisor, the React production assets, the self-contained local API publish output, and the private PostgreSQL runtime already stored under `PokerTrainer.Desktop/Runtime/Postgres`.
 
 ## Prerequisites
 
@@ -33,7 +33,7 @@ The desktop package script reads this file for:
 - RuntimeHost executable name
 - API executable name
 
-`Dotnet10Template.Desktop/Package.appxmanifest` is a stable source template. During build, the Desktop project copies it to configuration/RID-specific intermediate output and stamps product metadata into the generated manifest before packaging.
+`PokerTrainer.Desktop/Package.appxmanifest` is a stable source template. During build, the Desktop project copies it to configuration/RID-specific intermediate output and stamps product metadata into the generated manifest before packaging.
 
 Metadata relationships:
 
@@ -47,7 +47,7 @@ Metadata relationships:
 - `ProductVersion` is the generic product version used for artifact folders.
 - `ProductPackageVersion` is the four-part Windows package version used in the manifest/package.
 
-`Dotnet10Template.Desktop` and `Dotnet10Template.RuntimeHost` embed executable names as assembly metadata during build. Desktop uses that metadata to locate RuntimeHost, and RuntimeHost uses it to locate the bundled API, so changing executable names in `Directory.Product.props` does not require manually editing host path constants in source files.
+`PokerTrainer.Desktop` and `PokerTrainer.RuntimeHost` embed executable names as assembly metadata during build. Desktop uses that metadata to locate RuntimeHost, and RuntimeHost uses it to locate the bundled API, so changing executable names in `Directory.Product.props` does not require manually editing host path constants in source files.
 
 ## Canonical free development flow
 
@@ -63,7 +63,7 @@ Run from the repository root:
 On the first install, accept the normal Windows UAC prompt if local certificate trust is required. After install, launch the app from:
 
 ```text
-Windows Start Menu > Dotnet10Template Desktop
+Windows Start Menu > PokerTrainer Desktop
 ```
 
 For updates, rerun the same two commands after changing `ProductPackageVersion` in `Directory.Product.props`. The installer updates in place with `Add-AppxPackage`; it does not uninstall first.
@@ -127,7 +127,7 @@ The script:
 - restores and builds the React app with `npm ci` and `npm run build`
 - publishes the API project self-contained for the selected runtime identifier
 - publishes the RuntimeHost project self-contained for the selected runtime identifier
-- publishes/packages `Dotnet10Template.Desktop`
+- publishes/packages `PokerTrainer.Desktop`
 - signs the generated package
 - places final artifacts under `artifacts/desktop/<version>/`
 - prints every generated installer/signing artifact path
@@ -177,7 +177,7 @@ If Windows reports that this loose registration conflicts with the packaged app,
 Uninstall from Windows Settings:
 
 ```text
-Settings > Apps > Installed apps > Dotnet10Template Desktop > Uninstall
+Settings > Apps > Installed apps > PokerTrainer Desktop > Uninstall
 ```
 
 or use PowerShell:

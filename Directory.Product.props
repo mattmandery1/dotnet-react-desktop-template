@@ -1,25 +1,22 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
-    <ProductShortName>Dotnet10Template</ProductShortName>
-    <ProductDisplayName>Dotnet10Template Desktop</ProductDisplayName>
-    <ProductRootNamespace>Dotnet10Template</ProductRootNamespace>
-    <ProductDataFolderName>Dotnet10Template</ProductDataFolderName>
-    <ProductEnvPrefix>DOTNET10TEMPLATE</ProductEnvPrefix>
-
-    <ProductVersion>1.0.1</ProductVersion>
-    <ProductPackageVersion>1.0.1.0</ProductPackageVersion>
-    <ProductPackageIdentityName>Dotnet10Template.Desktop</ProductPackageIdentityName>
-    <ProductPublisher>CN=Dotnet10TemplateDevelopment</ProductPublisher>
-    <ProductPublisherDisplayName>Dotnet10Template Development</ProductPublisherDisplayName>
-    <ProductPhoneProductId>90de26b1-99bf-40a0-a4f6-7460aa9166d8</ProductPhoneProductId>
-    <ProductPhonePublisherId>4c9cbdf7-4581-4e2c-bf15-740a149556ef</ProductPhonePublisherId>
-
-    <DesktopExecutableName>Dotnet10Template.Desktop</DesktopExecutableName>
-    <RuntimeHostExecutableName>Dotnet10Template.RuntimeHost</RuntimeHostExecutableName>
-    <ApiExecutableName>Dotnet10Template.Api</ApiExecutableName>
-
-    <PostgresDatabaseName>dotnet10template</PostgresDatabaseName>
-    <DockerNamePrefix>dotnet10template</DockerNamePrefix>
-    <WebPackageName>dotnet10template.web</WebPackageName>
+    <ProductShortName>PokerTrainer</ProductShortName>
+    <ProductDisplayName>PokerTrainer Desktop</ProductDisplayName>
+    <ProductRootNamespace>PokerTrainer</ProductRootNamespace>
+    <ProductDataFolderName>PokerTrainer</ProductDataFolderName>
+    <ProductEnvPrefix>POKERTRAINER</ProductEnvPrefix>
+    <ProductVersion>1.0.0</ProductVersion>
+    <ProductPackageVersion>1.0.0.0</ProductPackageVersion>
+    <ProductPackageIdentityName>PokerTrainer.Desktop</ProductPackageIdentityName>
+    <ProductPublisher>CN=PokerTrainerDevelopment</ProductPublisher>
+    <ProductPublisherDisplayName>PokerTrainer Development</ProductPublisherDisplayName>
+    <ProductPhoneProductId>a0139e04-45fa-4769-aef1-1cbb3d68976a</ProductPhoneProductId>
+    <ProductPhonePublisherId>9fbac7b8-3a38-4fe4-a1d7-09eef90dd707</ProductPhonePublisherId>
+    <DesktopExecutableName>PokerTrainer.Desktop</DesktopExecutableName>
+    <RuntimeHostExecutableName>PokerTrainer.RuntimeHost</RuntimeHostExecutableName>
+    <ApiExecutableName>PokerTrainer.Api</ApiExecutableName>
+    <PostgresDatabaseName>poker_trainer</PostgresDatabaseName>
+    <DockerNamePrefix>poker-trainer</DockerNamePrefix>
+    <WebPackageName>poker-trainer.web</WebPackageName>
   </PropertyGroup>
 </Project>

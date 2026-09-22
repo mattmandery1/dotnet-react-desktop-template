@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PokerTrainer.Desktop (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "PokerTrainer.Desktop (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

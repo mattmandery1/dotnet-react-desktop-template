@@ -1,6 +1,6 @@
-# Dotnet10Template
+# PokerTrainer
 
-Dotnet10Template is a reusable application template, not a finished business product. It gives a new application a working React frontend, layered .NET backend, PostgreSQL persistence, Docker web hosting, Windows desktop hosting, MSIX packaging, tests, and one-shot product initialization.
+PokerTrainer is a reusable application template, not a finished business product. It gives a new application a working React frontend, layered .NET backend, PostgreSQL persistence, Docker web hosting, Windows desktop hosting, MSIX packaging, tests, and one-shot product initialization.
 
 The included `People` / `Hello` feature is deliberately small. It proves the end-to-end path:
 
@@ -44,11 +44,11 @@ The repository builds two delivery/runtime modes from one shared application arc
 
 Shared application code:
 
-- `src/dotnet10template.web`: React UI source.
-- `src/Dotnet10Template.Api`: ASP.NET Core API.
-- `src/Dotnet10Template.Application`: use cases, interfaces, orchestration.
-- `src/Dotnet10Template.Domain`: core business concepts.
-- `src/Dotnet10Template.Infrastructure`: EF Core, PostgreSQL persistence, external infrastructure implementations.
+- `src/poker-trainer.web`: React UI source.
+- `src/PokerTrainer.Api`: ASP.NET Core API.
+- `src/PokerTrainer.Application`: use cases, interfaces, orchestration.
+- `src/PokerTrainer.Domain`: core business concepts.
+- `src/PokerTrainer.Infrastructure`: EF Core, PostgreSQL persistence, external infrastructure implementations.
 - EF Core migrations and the PostgreSQL data model.
 
 Web/Docker-specific hosting:
@@ -61,11 +61,11 @@ Web/Docker-specific hosting:
 
 Windows-desktop-specific hosting:
 
-- `Dotnet10Template.Desktop`: WinUI 3 shell and WebView2 host.
-- `src/Dotnet10Template.RuntimeHost`: desktop-only supervisor for the local API and PostgreSQL processes.
+- `PokerTrainer.Desktop`: WinUI 3 shell and WebView2 host.
+- `src/PokerTrainer.RuntimeHost`: desktop-only supervisor for the local API and PostgreSQL processes.
 - Named-pipe Desktop/RuntimeHost control IPC.
 - Windows Job Object fallback cleanup.
-- Bundled PostgreSQL runtime under `Dotnet10Template.Desktop/Runtime/Postgres`.
+- Bundled PostgreSQL runtime under `PokerTrainer.Desktop/Runtime/Postgres`.
 - Local API executable, dynamic localhost API/PostgreSQL ports, MSIX packaging, LocalState persistence.
 
 Desktop and RuntimeHost exist only for the Windows desktop flavor. They are not required by the core application or Docker/web flavor.
@@ -99,7 +99,7 @@ Docker is not required for the installed Windows desktop application.
 
 Prerequisites on the packaging machine: Windows, .NET SDK/workloads for this solution, Node.js/npm, PowerShell, and MSIX-capable Windows tooling.
 
-Populate `Dotnet10Template.Desktop/Runtime/Postgres` with a complete Windows PostgreSQL runtime before packaging. See [Desktop PostgreSQL runtime](docs/desktop-postgres-runtime.md).
+Populate `PokerTrainer.Desktop/Runtime/Postgres` with a complete Windows PostgreSQL runtime before packaging. See [Desktop PostgreSQL runtime](docs/desktop-postgres-runtime.md).
 
 Build and install a development MSIX:
 
@@ -111,7 +111,7 @@ Build and install a development MSIX:
 Launch from:
 
 ```text
-Windows Start Menu -> Dotnet10Template Desktop
+Windows Start Menu -> PokerTrainer Desktop
 ```
 
 The installed desktop app includes the WinUI shell, React production assets, RuntimeHost, a self-contained API publish, and the private PostgreSQL runtime. It does not require Visual Studio, the .NET SDK, Node, npm, Docker, WSL, or a separately installed PostgreSQL server on the target machine.
@@ -151,23 +151,23 @@ Package versions are centralized in `Directory.Packages.props`.
 
 ```text
 .
-├─ Dotnet10Template.Desktop/
+├─ PokerTrainer.Desktop/
 ├─ src/
-│  ├─ Dotnet10Template.Api/
-│  ├─ Dotnet10Template.Application/
-│  ├─ Dotnet10Template.Domain/
-│  ├─ Dotnet10Template.Infrastructure/
-│  ├─ Dotnet10Template.RuntimeHost/
-│  └─ dotnet10template.web/
+│  ├─ PokerTrainer.Api/
+│  ├─ PokerTrainer.Application/
+│  ├─ PokerTrainer.Domain/
+│  ├─ PokerTrainer.Infrastructure/
+│  ├─ PokerTrainer.RuntimeHost/
+│  └─ poker-trainer.web/
 ├─ tests/
-│  ├─ Dotnet10Template.UnitTests/
-│  └─ Dotnet10Template.IntegrationTests/
+│  ├─ PokerTrainer.UnitTests/
+│  └─ PokerTrainer.IntegrationTests/
 ├─ docker/
 ├─ scripts/
 └─ docs/
 ```
 
-`Dotnet10Template.Desktop` is at the repository root in the filesystem. `Dotnet10Template.slnx` groups it under the `/src/` solution folder for Visual Studio organization.
+`PokerTrainer.Desktop` is at the repository root in the filesystem. `PokerTrainer.slnx` groups it under the `/src/` solution folder for Visual Studio organization.
 
 Layering:
 
@@ -253,12 +253,12 @@ Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Passwo
 Desktop runtime topology:
 
 ```text
-Dotnet10Template.Desktop.exe
+PokerTrainer.Desktop.exe
         |
         v
-Dotnet10Template.RuntimeHost.exe
+PokerTrainer.RuntimeHost.exe
         |
-        +---- Dotnet10Template.Api.exe
+        +---- PokerTrainer.Api.exe
         |
         +---- postgres.exe
 ```
@@ -348,13 +348,13 @@ Not implemented:
 - Update server/feed.
 - Store publishing workflow.
 
-`Dotnet10Template.Desktop/Package.appxmanifest` is a stable source template. The Desktop project copies it to configuration/RID-specific `obj` output and stamps product metadata into the generated manifest during build. Normal builds should not mutate the shared source manifest.
+`PokerTrainer.Desktop/Package.appxmanifest` is a stable source template. The Desktop project copies it to configuration/RID-specific `obj` output and stamps product metadata into the generated manifest during build. Normal builds should not mutate the shared source manifest.
 
 More detail: [Desktop packaging](docs/desktop-packaging.md).
 
 ## Template Initialization
 
-`scripts/initialize-template.ps1` is a one-shot initializer for fresh clones. It refuses to run against a repository that no longer looks like a fresh `Dotnet10Template` checkout.
+`scripts/initialize-template.ps1` is a one-shot initializer for fresh clones. It refuses to run against a repository that no longer looks like a fresh `PokerTrainer` checkout.
 
 Required inputs:
 
@@ -386,7 +386,7 @@ The initializer:
 - Renames solution, project directories, project files, test directories, Desktop directory, and web package directory.
 - Updates namespaces, usings, XAML class names, EF migration namespaces, solution entries, project references, Docker paths, launch profile names, package paths, and script/docs references.
 - Removes generated local signing/package artifacts from template-owned locations.
-- Scans for missed `Dotnet10Template`, `dotnet10template`, and `DOTNET10TEMPLATE` references.
+- Scans for missed `PokerTrainer`, `poker-trainer`, and `POKERTRAINER` references.
 
 Default validation runs restore, Debug/Release builds with warnings as errors, unit tests, `npm ci`, `npm run build`, `docker compose config --quiet`, and package metadata/path validation. If Docker is running, it also runs `docker compose build` and integration tests. If Docker is not running, Docker build and integration tests are skipped with a message.
 
@@ -402,8 +402,8 @@ From the repository root:
 dotnet restore
 dotnet build -c Debug --no-restore -warnaserror
 dotnet build -c Release --no-restore -warnaserror
-dotnet test tests\Dotnet10Template.UnitTests\Dotnet10Template.UnitTests.csproj --no-build -c Debug
-dotnet test tests\Dotnet10Template.IntegrationTests\Dotnet10Template.IntegrationTests.csproj --no-build -c Debug
+dotnet test tests\PokerTrainer.UnitTests\PokerTrainer.UnitTests.csproj --no-build -c Debug
+dotnet test tests\PokerTrainer.IntegrationTests\PokerTrainer.IntegrationTests.csproj --no-build -c Debug
 ```
 
 Integration tests use Testcontainers with `postgres:17`; Docker must be running.
@@ -411,7 +411,7 @@ Integration tests use Testcontainers with `postgres:17`; Docker must be running.
 Frontend:
 
 ```powershell
-cd src\dotnet10template.web
+cd src\poker-trainer.web
 npm ci
 npm run build
 cd ..\..
@@ -463,20 +463,20 @@ Safe cleanup path for the current repository:
 1. Remove the Desktop project directory:
 
    ```text
-   Dotnet10Template.Desktop/
+   PokerTrainer.Desktop/
    ```
 
 2. Remove the desktop supervisor project:
 
    ```text
-   src/Dotnet10Template.RuntimeHost/
+   src/PokerTrainer.RuntimeHost/
    ```
 
-3. Remove these project entries from `Dotnet10Template.slnx`:
+3. Remove these project entries from `PokerTrainer.slnx`:
 
    ```text
-   Dotnet10Template.Desktop/Dotnet10Template.Desktop.csproj
-   src/Dotnet10Template.RuntimeHost/Dotnet10Template.RuntimeHost.csproj
+   PokerTrainer.Desktop/PokerTrainer.Desktop.csproj
+   src/PokerTrainer.RuntimeHost/PokerTrainer.RuntimeHost.csproj
    ```
 
 4. Remove desktop-only scripts if you no longer package MSIX:
@@ -498,8 +498,8 @@ Safe cleanup path for the current repository:
 
 6. Clean desktop-only ignore rules if desired:
 
-   - `.gitignore` entries for `Dotnet10Template.Desktop/Runtime/Postgres`.
-   - `.dockerignore` entry excluding `Dotnet10Template.Desktop`.
+   - `.gitignore` entries for `PokerTrainer.Desktop/Runtime/Postgres`.
+   - `.dockerignore` entry excluding `PokerTrainer.Desktop`.
 
 7. Keep `Directory.Product.props` initially. The web/API/Docker path still uses `ProductShortName`, `ProductDisplayName`, `ProductRootNamespace`, `ProductVersion`, `ApiExecutableName`, `PostgresDatabaseName`, `DockerNamePrefix`, and `WebPackageName`. Desktop-only properties may remain unused safely.
 

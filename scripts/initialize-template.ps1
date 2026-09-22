@@ -407,10 +407,14 @@ function Test-PackageDesktopMetadata {
 
     $scriptPath = Join-Path $Root "scripts/package-desktop.ps1"
     $scriptText = [IO.File]::ReadAllText($scriptPath)
+    $manifestPath = Join-Path $Root "$ProductRootNamespace.Desktop\Package.appxmanifest"
+
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        throw "Expected desktop manifest was not found at '$manifestPath'."
+    }
 
     foreach ($expected in @(
         "$ProductRootNamespace.slnx",
-        "$ProductRootNamespace.Desktop\Package.appxmanifest",
         "$ProductRootNamespace.Desktop\$ProductRootNamespace.Desktop.csproj",
         "src\$ProductRootNamespace.Api\$ProductRootNamespace.Api.csproj",
         "src\$ProductRootNamespace.RuntimeHost\$ProductRootNamespace.RuntimeHost.csproj",

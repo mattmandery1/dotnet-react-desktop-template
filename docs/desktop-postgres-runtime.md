@@ -1,19 +1,19 @@
 # Desktop PostgreSQL runtime
 
-`Dotnet10Template.Desktop` owns the user experience. It launches `Dotnet10Template.RuntimeHost`, and RuntimeHost owns the private PostgreSQL and API processes in desktop mode. Docker and a separately installed PostgreSQL service are not required for the desktop app.
+`PokerTrainer.Desktop` owns the user experience. It launches `PokerTrainer.RuntimeHost`, and RuntimeHost owns the private PostgreSQL and API processes in desktop mode. Docker and a separately installed PostgreSQL service are not required for the desktop app.
 
 ## Runtime folder
 
 For local development, place the Windows PostgreSQL runtime under:
 
 ```text
-Dotnet10Template.Desktop\Runtime\Postgres
+PokerTrainer.Desktop\Runtime\Postgres
 ```
 
 The expected PostgreSQL server executable path is:
 
 ```text
-Dotnet10Template.Desktop\Runtime\Postgres\bin\postgres.exe
+PokerTrainer.Desktop\Runtime\Postgres\bin\postgres.exe
 ```
 
 Populate this folder from a complete PostgreSQL Windows binary distribution, such as the ZIP archive from EnterpriseDB's PostgreSQL Windows builds or the installed PostgreSQL program directory copied from a matching local installation. Do not copy only `postgres.exe`, `initdb.exe`, `pg_ctl.exe`, and `pg_isready.exe`; PostgreSQL also needs its supporting DLLs, libraries, extensions, timezone files, locale data, and other runtime assets.
@@ -21,12 +21,12 @@ Populate this folder from a complete PostgreSQL Windows binary distribution, suc
 Preserve the distribution's required directory layout, including `bin`, `lib`, `share`, and any other directories included by the PostgreSQL distribution. At minimum, the desktop startup code expects these tools to exist:
 
 ```text
-Dotnet10Template.Desktop\Runtime\Postgres\bin\postgres.exe
-Dotnet10Template.Desktop\Runtime\Postgres\bin\initdb.exe
-Dotnet10Template.Desktop\Runtime\Postgres\bin\pg_ctl.exe
-Dotnet10Template.Desktop\Runtime\Postgres\bin\pg_isready.exe
-Dotnet10Template.Desktop\Runtime\Postgres\bin\psql.exe
-Dotnet10Template.Desktop\Runtime\Postgres\bin\createdb.exe
+PokerTrainer.Desktop\Runtime\Postgres\bin\postgres.exe
+PokerTrainer.Desktop\Runtime\Postgres\bin\initdb.exe
+PokerTrainer.Desktop\Runtime\Postgres\bin\pg_ctl.exe
+PokerTrainer.Desktop\Runtime\Postgres\bin\pg_isready.exe
+PokerTrainer.Desktop\Runtime\Postgres\bin\psql.exe
+PokerTrainer.Desktop\Runtime\Postgres\bin\createdb.exe
 ```
 
 The desktop project copies `Runtime/Postgres/**` to the build, publish, and packaged output when the folder is present. RuntimeHost copies that private runtime to the per-user app data directory and executes PostgreSQL from there.
@@ -88,10 +88,10 @@ If a dynamically selected port becomes occupied during startup, RuntimeHost retr
 Runtime processes are supervised as:
 
 ```text
-Dotnet10Template.Desktop
-  -> Dotnet10Template.RuntimeHost
+PokerTrainer.Desktop
+  -> PokerTrainer.RuntimeHost
        -> postgres.exe
-       -> Dotnet10Template.Api
+       -> PokerTrainer.Api
 ```
 
 Desktop and RuntimeHost use a per-launch named pipe for control messages. Desktop waits for RuntimeHost to report the selected API endpoint before loading WebView2. RuntimeHost monitors the exact Desktop PID it was launched for, not a process name.

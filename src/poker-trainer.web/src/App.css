@@ -1,0 +1,17 @@
+#root { min-height: 100vh; }
+.poker-screen { width: min(100% - 2rem, 90rem); margin: 0 auto; padding: clamp(1.5rem, 4vw, 3.5rem) 0; }
+.table-section { display: grid; place-items: center; min-height: min(58vw, 39rem); padding: clamp(1rem, 3vw, 2.5rem); border-radius: 1.5rem; background: radial-gradient(circle at top, #23302b, #101713 70%); box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 35%); }
+.poker-table { width: min(100%, 62rem); aspect-ratio: 2 / 1; padding: clamp(0.7rem, 2vw, 1.4rem); border: clamp(0.5rem, 1.3vw, 1rem) solid #3b2418; border-radius: 50%; background: linear-gradient(145deg, #8b5a35, #29170f 45%, #6d4027); box-shadow: inset 0 0 0 0.2rem rgb(255 255 255 / 9%), 0 1.2rem 2rem rgb(0 0 0 / 45%); box-sizing: border-box; }
+.poker-table__felt { width: 100%; height: 100%; border: 0.2rem solid rgb(255 255 255 / 12%); border-radius: inherit; background: radial-gradient(ellipse at center, rgb(255 255 255 / 7%), transparent 60%), #12613f; box-shadow: inset 0 0 2.5rem rgb(0 0 0 / 35%); }
+.deck-section { margin-top: clamp(2rem, 5vw, 4rem); }
+.deck-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(4.75rem, 1fr)); gap: clamp(0.6rem, 1.3vw, 1rem); }
+.playing-card { position: relative; aspect-ratio: 2.5 / 3.5; min-width: 0; overflow: hidden; border: 1px solid #d7d5cf; border-radius: 0.5rem; background: #fffef9; color: #161616; box-shadow: 0 0.35rem 0.8rem rgb(0 0 0 / 22%); }
+.playing-card--red { color: #c5222f; }
+.playing-card__corner { position: absolute; top: 0.4rem; left: 0.45rem; display: flex; flex-direction: column; align-items: center; font-weight: 750; font-size: clamp(0.8rem, 1.8vw, 1.05rem); line-height: 0.9; }
+.playing-card__suit { position: absolute; inset: 0; display: grid; place-items: center; font-size: clamp(1.8rem, 4.5vw, 3.1rem); }
+
+@media (max-width: 36rem) {
+  .poker-screen { width: min(100% - 1rem, 90rem); }
+  .table-section { min-height: 15rem; padding: 0.75rem; }
+  .deck-grid { grid-template-columns: repeat(auto-fit, minmax(3.75rem, 1fr)); }
+}

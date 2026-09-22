@@ -243,7 +243,7 @@ function Import-SigningCertificate {
 }
 
 $repoRoot = (Get-Location).Path
-if (-not (Test-Path (Join-Path $repoRoot "Dotnet10Template.slnx"))) {
+if (-not (Test-Path (Join-Path $repoRoot "PokerTrainer.slnx"))) {
     throw "Run this script from the repository root."
 }
 
@@ -272,10 +272,10 @@ $phonePublisherId = Get-RequiredProperty $productProps "ProductPhonePublisherId"
 $artifactRoot = Join-Path $repoRoot "artifacts\desktop\$productVersion"
 $apiPublishDir = Join-Path $artifactRoot "api-publish-$RuntimeIdentifier"
 $runtimeHostPublishDir = Join-Path $artifactRoot "runtime-host-publish-$RuntimeIdentifier"
-$desktopProject = Join-Path $repoRoot "Dotnet10Template.Desktop\Dotnet10Template.Desktop.csproj"
-$apiProject = Join-Path $repoRoot "src\Dotnet10Template.Api\Dotnet10Template.Api.csproj"
-$runtimeHostProject = Join-Path $repoRoot "src\Dotnet10Template.RuntimeHost\Dotnet10Template.RuntimeHost.csproj"
-$webProjectDir = Join-Path $repoRoot "src\dotnet10template.web"
+$desktopProject = Join-Path $repoRoot "PokerTrainer.Desktop\PokerTrainer.Desktop.csproj"
+$apiProject = Join-Path $repoRoot "src\PokerTrainer.Api\PokerTrainer.Api.csproj"
+$runtimeHostProject = Join-Path $repoRoot "src\PokerTrainer.RuntimeHost\PokerTrainer.RuntimeHost.csproj"
+$webProjectDir = Join-Path $repoRoot "src\poker-trainer.web"
 
 $platform = switch ($RuntimeIdentifier) {
     "win-x64" { "x64" }
@@ -414,7 +414,7 @@ $packageArgs = @(
 
 Invoke-Checked -FilePath "dotnet" -Arguments $packageArgs -WorkingDirectory $repoRoot
 
-$projectScopedArtifactRoot = Join-Path $repoRoot "Dotnet10Template.Desktop\artifacts\desktop\$productVersion"
+$projectScopedArtifactRoot = Join-Path $repoRoot "PokerTrainer.Desktop\artifacts\desktop\$productVersion"
 if (Test-Path $projectScopedArtifactRoot) {
     Get-ChildItem -LiteralPath $projectScopedArtifactRoot -Recurse -File | ForEach-Object {
         $relativePath = [IO.Path]::GetRelativePath($projectScopedArtifactRoot, $_.FullName)
