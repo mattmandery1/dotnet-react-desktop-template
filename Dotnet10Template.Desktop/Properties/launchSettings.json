@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Dotnet10Template.Desktop (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Dotnet10Template.Desktop (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

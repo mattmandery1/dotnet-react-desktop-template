@@ -7,16 +7,16 @@ Guidance for AI coding agents and automated contributors working in this reposit
 This repository has one shared application and two delivery/runtime modes.
 
 Shared application:
-- React UI: `src/poker-trainer.web`
-- API: `src/PokerTrainer.Api`
-- Application: `src/PokerTrainer.Application`
-- Domain: `src/PokerTrainer.Domain`
-- Infrastructure: `src/PokerTrainer.Infrastructure`
+- React UI: `src/dotnet10template.web`
+- API: `src/Dotnet10Template.Api`
+- Application: `src/Dotnet10Template.Application`
+- Domain: `src/Dotnet10Template.Domain`
+- Infrastructure: `src/Dotnet10Template.Infrastructure`
 - EF Core/PostgreSQL model and migrations in Infrastructure
 
 Mode-specific hosting:
 - Web/Docker: `compose.yaml`, `docker/api.Dockerfile`, `docker/web.Dockerfile`, `docker/nginx.conf`, PostgreSQL container, nginx, browser delivery.
-- Windows Desktop: `PokerTrainer.Desktop`, WinUI 3/WebView2, `src/PokerTrainer.RuntimeHost`, named-pipe IPC, bundled API, bundled PostgreSQL runtime, dynamic loopback ports, MSIX, LocalState.
+- Windows Desktop: `Dotnet10Template.Desktop`, WinUI 3/WebView2, `src/Dotnet10Template.RuntimeHost`, named-pipe IPC, bundled API, bundled PostgreSQL runtime, dynamic loopback ports, MSIX, LocalState.
 
 Preserve this split. Business/domain behavior belongs in the shared application unless there is a compelling platform-specific reason. Do not put normal business logic in Desktop or RuntimeHost.
 
@@ -49,9 +49,9 @@ Web-only downstream products must be possible: shared projects and React must no
 Desktop runtime topology:
 
 ```text
-PokerTrainer.Desktop.exe
-  -> PokerTrainer.RuntimeHost.exe
-      -> PokerTrainer.Api.exe
+Dotnet10Template.Desktop.exe
+  -> Dotnet10Template.RuntimeHost.exe
+      -> Dotnet10Template.Api.exe
       -> postgres.exe
 ```
 
@@ -100,31 +100,31 @@ Desktop data lives under package LocalState at `<LocalState>/<ProductDataFolderN
 `Directory.Product.props` is the central product identity source. Use existing metadata instead of scattering hardcoded identity strings.
 
 Current properties:
-- `ProductShortName`: `PokerTrainer`
-- `ProductDisplayName`: `PokerTrainer Desktop`
-- `ProductRootNamespace`: `PokerTrainer`
-- `ProductDataFolderName`: `PokerTrainer`
-- `ProductEnvPrefix`: `POKERTRAINER`
+- `ProductShortName`: `Dotnet10Template`
+- `ProductDisplayName`: `Dotnet10Template Desktop`
+- `ProductRootNamespace`: `Dotnet10Template`
+- `ProductDataFolderName`: `Dotnet10Template`
+- `ProductEnvPrefix`: `DOTNET10TEMPLATE`
 - `ProductVersion`: `1.0.1`
 - `ProductPackageVersion`: `1.0.1.0`
-- `ProductPackageIdentityName`: `PokerTrainer.Desktop`
-- `ProductPublisher`: `CN=PokerTrainerDevelopment`
-- `ProductPublisherDisplayName`: `PokerTrainer Development`
+- `ProductPackageIdentityName`: `Dotnet10Template.Desktop`
+- `ProductPublisher`: `CN=Dotnet10TemplateDevelopment`
+- `ProductPublisherDisplayName`: `Dotnet10Template Development`
 - `ProductPhoneProductId`: `90de26b1-99bf-40a0-a4f6-7460aa9166d8`
 - `ProductPhonePublisherId`: `4c9cbdf7-4581-4e2c-bf15-740a149556ef`
-- `DesktopExecutableName`: `PokerTrainer.Desktop`
-- `RuntimeHostExecutableName`: `PokerTrainer.RuntimeHost`
-- `ApiExecutableName`: `PokerTrainer.Api`
-- `PostgresDatabaseName`: `poker-trainer`
-- `DockerNamePrefix`: `poker-trainer`
-- `WebPackageName`: `poker-trainer.web`
+- `DesktopExecutableName`: `Dotnet10Template.Desktop`
+- `RuntimeHostExecutableName`: `Dotnet10Template.RuntimeHost`
+- `ApiExecutableName`: `Dotnet10Template.Api`
+- `PostgresDatabaseName`: `dotnet10template`
+- `DockerNamePrefix`: `dotnet10template`
+- `WebPackageName`: `dotnet10template.web`
 
 Important:
 - Desktop ports are not product identity.
 - `app.local` is an implementation host name, not product metadata.
 - `ProductPackageIdentityName` and `ProductPublisher` affect MSIX update identity.
 - Executable names derive from centralized metadata where implemented.
-- Do not introduce new hardcoded `PokerTrainer` identity strings into runtime/config code unless structurally required by template initialization.
+- Do not introduce new hardcoded `Dotnet10Template` identity strings into runtime/config code unless structurally required by template initialization.
 
 ## Template Initializer
 
@@ -140,7 +140,7 @@ If adding a product-specific path/token/project:
 
 ## Desktop Manifest And Packaging
 
-`PokerTrainer.Desktop/Package.appxmanifest` is a stable source template. Build targets copy it to configuration/RID-specific `obj` output and stamp product metadata there. Do not mutate the shared source manifest during normal builds. Preserve concurrent Debug/Release build safety.
+`Dotnet10Template.Desktop/Package.appxmanifest` is a stable source template. Build targets copy it to configuration/RID-specific `obj` output and stamp product metadata there. Do not mutate the shared source manifest during normal builds. Preserve concurrent Debug/Release build safety.
 
 Free development packaging workflow:
 
@@ -196,14 +196,14 @@ Use exact current commands from the repo root unless a change clearly narrows th
 dotnet restore
 dotnet build -c Debug --no-restore -warnaserror
 dotnet build -c Release --no-restore -warnaserror
-dotnet test tests\PokerTrainer.UnitTests\PokerTrainer.UnitTests.csproj --no-build -c Debug
-dotnet test tests\PokerTrainer.IntegrationTests\PokerTrainer.IntegrationTests.csproj --no-build -c Debug
+dotnet test tests\Dotnet10Template.UnitTests\Dotnet10Template.UnitTests.csproj --no-build -c Debug
+dotnet test tests\Dotnet10Template.IntegrationTests\Dotnet10Template.IntegrationTests.csproj --no-build -c Debug
 ```
 
 Frontend:
 
 ```powershell
-cd src\poker-trainer.web
+cd src\dotnet10template.web
 npm ci
 npm run build
 cd ..\..
@@ -273,13 +273,13 @@ Avoid editing generated/vendor/local output directly:
 - `bin/`, `obj/`, `Debug/`, `Release/`, `x64/`, `x86/`, `ARM64/`
 - `artifacts/`
 - `node_modules/`
-- `src/poker-trainer.web/dist/`
+- `src/dotnet10template.web/dist/`
 - `.certificates/`
 - `AppPackages/`, `BundleArtifacts/`
 - `*.appx`, `*.appxbundle`, `*.msix`, `*.msixbundle`, `*.appxupload`
 - `*.pfx`, private keys, local certificate material
 - generated intermediate manifests under `obj/`
-- bundled PostgreSQL binaries under `PokerTrainer.Desktop/Runtime/Postgres/**` unless explicitly updating the desktop runtime payload
+- bundled PostgreSQL binaries under `Dotnet10Template.Desktop/Runtime/Postgres/**` unless explicitly updating the desktop runtime payload
 
 The repository keeps `.gitkeep` placeholders for PostgreSQL runtime folders. Preserve ignore behavior when changing runtime payload handling.
 

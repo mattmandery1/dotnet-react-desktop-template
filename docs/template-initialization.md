@@ -53,22 +53,22 @@ Every initialization generates fresh values for:
 - `ProductPhonePublisherId`
 - API `UserSecretsId`
 
-Known generated local signing material and package outputs are removed from `.certificates`, `artifacts`, `PokerTrainer.Desktop/AppPackages`, `PokerTrainer.Desktop/artifacts`, and `PokerTrainer.Desktop/BundleArtifacts`. Other certificate files elsewhere in the repository are preserved. Do not reuse template `.pfx` files or private keys. The initialized product should generate its own development certificate when `scripts/package-desktop.ps1` is run with `-Development`.
+Known generated local signing material and package outputs are removed from `.certificates`, `artifacts`, `Dotnet10Template.Desktop/AppPackages`, `Dotnet10Template.Desktop/artifacts`, and `Dotnet10Template.Desktop/BundleArtifacts`. Other certificate files elsewhere in the repository are preserved. Do not reuse template `.pfx` files or private keys. The initialized product should generate its own development certificate when `scripts/package-desktop.ps1` is run with `-Development`.
 
 ## Renamed structure
 
 The initializer structurally renames:
 
-- `PokerTrainer.slnx`
-- `PokerTrainer.Desktop`
-- `src/PokerTrainer.Api`
-- `src/PokerTrainer.Application`
-- `src/PokerTrainer.Domain`
-- `src/PokerTrainer.Infrastructure`
-- `src/PokerTrainer.RuntimeHost`
-- `tests/PokerTrainer.UnitTests`
-- `tests/PokerTrainer.IntegrationTests`
-- `src/poker-trainer.web`
+- `Dotnet10Template.slnx`
+- `Dotnet10Template.Desktop`
+- `src/Dotnet10Template.Api`
+- `src/Dotnet10Template.Application`
+- `src/Dotnet10Template.Domain`
+- `src/Dotnet10Template.Infrastructure`
+- `src/Dotnet10Template.RuntimeHost`
+- `tests/Dotnet10Template.UnitTests`
+- `tests/Dotnet10Template.IntegrationTests`
+- `src/dotnet10template.web`
 
 It also renames matching `.csproj` and `.http` files, updates solution entries, project references, runtime-host paths, Docker paths, package paths, launch profile names, C# namespaces/usings, XAML `x:Class` values, EF migration namespaces, EF model snapshot namespaces, and structural references in scripts and docs.
 
@@ -91,11 +91,11 @@ The following implementation constants remain unchanged:
 
 ## Safety
 
-The script validates names before modifying files. It refuses to run against a repository that no longer looks like a fresh `PokerTrainer` clone. To initialize a product, use a fresh clone or restore the checkout before running the script.
+The script validates names before modifying files. It refuses to run against a repository that no longer looks like a fresh `Dotnet10Template` clone. To initialize a product, use a fresh clone or restore the checkout before running the script.
 
 Replacement is limited to source/config/documentation file allowlists and skips generated or vendor folders such as `.git`, `.vs`, `bin`, `obj`, `artifacts`, `node_modules`, `dist`, `.certificates`, `AppPackages`, and the bundled PostgreSQL runtime binaries.
 
-After rewriting, the script scans for remaining `PokerTrainer`, `poker-trainer`, and `POKERTRAINER` references. Remaining references must be categorized as intentional template-initializer references or generated/vendor artifacts; missed structural references fail the run.
+After rewriting, the script scans for remaining `Dotnet10Template`, `dotnet10template`, and `DOTNET10TEMPLATE` references. Remaining references must be categorized as intentional template-initializer references or generated/vendor artifacts; missed structural references fail the run.
 
 ## Validation
 

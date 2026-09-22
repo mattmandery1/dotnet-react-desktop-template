@@ -2,10 +2,10 @@ FROM node:24-alpine AS build
 WORKDIR /app
 
 COPY Directory.Product.props /Directory.Product.props
-COPY src/poker-trainer.web/package*.json ./
+COPY src/dotnet10template.web/package*.json ./
 RUN npm ci
 
-COPY src/poker-trainer.web/ .
+COPY src/dotnet10template.web/ .
 
 RUN npm run build
 

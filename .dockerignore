@@ -37,7 +37,7 @@ artifacts
 AppPackages
 
 # Desktop-only runtime/package payloads; excluded from Docker context only.
-PokerTrainer.Desktop
+Dotnet10Template.Desktop
 
 # Tests are run from the host and are not required for API/web image builds.
 tests
